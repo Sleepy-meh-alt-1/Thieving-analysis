@@ -163,7 +163,7 @@ window.setTimeout(() => {
 
             chatInterval = setInterval(() => {
                 readChatbox();
-            }, 50);
+            }, 200);
         }
     }, 1000);
 }, 0);
