@@ -1,489 +1,661 @@
 A1lib.identifyApp("appconfig.json");
 
-window.setTimeout(function () {
-  const appColor = A1lib.mixColor(255, 199, 0);
-  const timestampRegex = /\[\d{2}:\d{2}:\d{2}\]/g;
+// -------------------------
+// Variables
+// -------------------------
 
-  let reader = new Chatbox.default();
-  reader.readargs = {
-    colors: [
-      A1lib.mixColor(255, 255, 255), // white
-      A1lib.mixColor(0, 255, 0), // prosper green
-      A1lib.mixColor(30, 255, 0), // bik green
-      A1lib.mixColor(30, 255, 0) // lotd orange
-    ],
-    backwards: true,
-  };
+// Alt1 stuff
+let reader = new Chatbox.default();
+const appColor = A1lib.mixColor(255, 199, 0);
+const timestampRegex = /\[\d{2}:\d{2}:\d{2}\]/g;
+let chatInterval = null;
 
-  $(".mats").append("<span>Searching for chatboxes</span>");
-  $(".mats").append(
-    "<div>If this is showing for an extended period of time, then the chatbox read for Alt1 isn't working due to an update.  Please be patient, and the issue will be fixed as soon as it can!</div>"
-  );
-  reader.find();
-  let findChat = setInterval(function () {
-    if (reader.pos === null) reader.find();
-    else {
-      clearInterval(findChat);
+// Timer
+let isRunning = false;
+let startTime = 0;
+let pausedTime = 0;
+let timerInterval = null;
+let displayInterval = null;
 
-      //If multiple boxes are found, this will select the first, which should be the top-most chat box on the screen.
-      reader.pos.mainbox = reader.pos.boxes[0];
-      showSelectedChat(reader.pos);
-    }
-  }, 1000);
-
-  function showSelectedChat(chat) {
-    //Attempt to show a temporary rectangle around the chatbox.  skip if overlay is not enabled.
-    try {
-      alt1.overLayRect(
-        appColor,
-        chat.mainbox.rect.x,
-        chat.mainbox.rect.y,
-        chat.mainbox.rect.width,
-        chat.mainbox.rect.height,
-        2000,
-        5
-      );
-    } catch {}
-  }
-
-  tracking = setInterval(function () {
-          readChatbox();
-          updateDisplay()
-
-        }, 600);
-
-  function readChatbox() {
-
-    var opts = reader.read() || [];
-    var chatStr = "";
-    var chatArr;
-
-    if (opts.length != 0) {
-      for (let line in opts) {
-        //Filter out the first chat[line], if it has no timestamp.  This is probably from a screen reload.
-        //Check if no timestamp exists, and it's the first line in the chatreader.
-        if (!opts[line].text.match(timestampRegex) && line == "0") {
-          continue;
-        }
-        // Beginning of chat line
-        if (opts[line].text.match(timestampRegex)) {
-          if (line > 0) {
-            chatStr += "\n";
-          }
-          chatStr += opts[line].text + " ";
-          continue;
-        }
-        chatStr += opts[line].text;
-      }
-    }
-    if (chatStr.trim() != "") {
-      chatArr = chatStr.trim().split("\n");
-    }
-    let name, type, qty;
-    for (let line in chatArr) {
-      let chatLine = chatArr[line].trim();
-      let prevChatLine;
-      if (chatArr[line - 1]) {
-        prevChatLine = chatArr[line - 1].trim();
-      }
-      if (chatLine != "") {
-        // Determine if chat line was already logged, skip further processing this line.
-        if (isInHistory(chatLine)) {
-          qty = null;
-          continue;
-        }
-        checkLine(chatLine);
-      }
-    }
-    if (chatArr) {
-      updateChatHistory(chatArr);
-    }
-  }
-
-  function updateChatHistory(chatArr) {
-    if (!sessionStorage.chatHistory) {
-      sessionStorage.chatHistory = chatArr.join("\n");
-      return;
-    }
-    var history = sessionStorage.chatHistory.split("\n");
-    while (history.length > 100) {
-      history.splice(0, 1);
-    }
-    chatArr.forEach((line) => history.push(line.trim()));
-    sessionStorage.chatHistory = history.join("\n");
-  }
-
-  function isInHistory(chatLine) {
-    if (sessionStorage.chatHistory) {
-      for (let historyLine of sessionStorage.chatHistory.split("\n")) {
-        if (historyLine.trim() == chatLine) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-})
-
-
-// Credits to https://github.com/ZeroGwafa/ArchMatCounter ^
-// --------------------------------------------------------------------------------------------------------------------------------------
-
-// Counter Varialbles
+// Counters
 let normalPP = 0;
 let fastboiPP = 0;
 let camoPP = 0;
 let failedPP = 0;
 
-// Timer variables
-let startTime = null;
-let pausedTime = null;
-let totalPaused = 0;
-let running = false;
-let timerInterval = null;
+// Save snapshot storage
+let saveSnapshot = null;
 
-// Button logic for timer
+// Save key
+const SAVE_KEY = "ppTrackerSave";
+
+// Settings
+let setting_autoStart = false;
+let setting_stickyFingers = true;
+
+// icons
+let currentNPC = "";
+const npcData = {
+    "menaphos market guard": {
+        icon: "https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77",
+        drops: [
+            { key: "hard",  label: "hard clues",   rate: 6 / 1000 },
+            { key: "elite", label: "elite clues",  rate: 5 / 1000 }
+        ]
+    },
+
+    "archaeology professor": {
+        icon: "https://runescape.wiki/images/Archaeology_professor_icon.png?dae9b",
+        drops: [
+            { key: "tetra", label: "tetra pieces",      rate: 1 / 1000 },
+            { key: "arch",  label: "arch boost items", rate: 2 / 1000 },
+            { key: "artefact",  label: "artefacts", rate: 1 / 1000 },
+            
+        ]
+    },
+
+    "h.a.m. female follower": {
+        icon: "https://runescape.wiki/images/H.A.M._Member_%28female%29_icon.png?31b9d",
+        drops: [
+            { key: "easy", label: "easy clues", rate: 1 / 100 }
+        ]
+    },
+
+    "default": {
+        icon: "https://runescape.wiki/images/Irksol_chathead.png?68578",
+        drops: [] // nothing interesting
+    }
+};
+
+
+// -------------------------
+// UI Buttons
+// -------------------------
+
 document.getElementById("startBtn").addEventListener("click", startTimer);
 document.getElementById("stopBtn").addEventListener("click", stopTimer);
-document.getElementById("resetBtn").addEventListener("click", resetAll);
+document.getElementById("resetBtn").addEventListener("click", resetTimer);
 document.getElementById("saveBtn").addEventListener("click", () => {
-    // Update the data preview inside the popup
-    const preview = document.getElementById("saveDataPreview");
+    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
+    const wait = msUntilNextTick(elapsed);
 
-    saveSnapshot = {
-        normalPP,
-        fastboiPP,
-        camoPP,
-        failedPP,
-        secondsElapsed,
-        effiencyPercent
-    };
-    preview.innerHTML = `
-        Normal PP: ${normalPP} <br>
-        Fastboi PP: ${fastboiPP} <br>
-        Camo PP: ${camoPP} <br>
-        Failed PP: ${failedPP} <br>
-        Seconds Elapsed: ${secondsElapsed} <br>
-        Efficiency: ${effiencyPercent ? effiencyPercent.toFixed(2) : '0'}%
-    `;
-    document.getElementById("confirmSavePopup").style.display = "block";
+    setTimeout(() => {
+        saveSnapshot = getCurrentSessionData();
+
+        let alignedElapsed = saveSnapshot.elapsed;
+        let elapsedSec = alignedElapsed / 1000;
+        let elapsedHours = elapsedSec / 3600;
+
+        let totalPP = saveSnapshot.normalPP + saveSnapshot.camoPP + saveSnapshot.fastboiPP;
+        let normalPPPerHour = elapsedHours > 0 ? saveSnapshot.normalPP / elapsedHours : 0;
+        let efficiency = (normalPPPerHour / 3000) * 100;
+
+        const preview = document.getElementById("saveDataPreview");
+        preview.innerHTML = `
+            <div style="color:#ffcc00; margin-bottom:8px;">
+                <i>Data is saved on the <b>next game tick</b> (0.6s), not the exact click moment. These values will be saved:</i>
+            </div>
+            <div><b>Normal PP:</b> ${saveSnapshot.normalPP}</div>
+            <div><b>Fastboi PP:</b> ${saveSnapshot.fastboiPP}</div>
+            <div><b>Camo PP:</b> ${saveSnapshot.camoPP}</div>
+            <div><b>Failed PP:</b> ${saveSnapshot.failedPP}</div>
+            <br>
+            <div><b>Seconds Elapsed:</b> ${elapsedSec.toFixed(1)}</div>
+            <div><b>Efficiency:</b> ${efficiency.toFixed(2)}%</div>
+        `;
+
+        document.getElementById("confirmSavePopup").style.display = "block";
+    }, wait);
 });
 
 document.getElementById("confirmSaveYes").addEventListener("click", () => {
-  if (!saveSnapshot) return;
+    if (!saveSnapshot) return;
+
     saveState(saveSnapshot);
-    saveSnapshot = null
-    
+    saveSnapshot = null;
+
     document.getElementById("confirmSavePopup").style.display = "none";
-    spawnXPDrop("Saved!");
+    loadState();
 });
 
 document.getElementById("confirmSaveNo").addEventListener("click", () => {
-    saveSnapshot = null
+    saveSnapshot = null;
     document.getElementById("confirmSavePopup").style.display = "none";
 });
 
-function startTimer(delay) {
-  if (running) return;
+document.getElementById("openSessionPopup").addEventListener("click", () => {
+    buildSessionList();
+    document.getElementById("sessionPopup").style.display = "flex";
+});
 
-  running = true;
+document.getElementById("closeSessionPopup").addEventListener("click", () => {
+    document.getElementById("sessionPopup").style.display = "none";
+});
 
-  // If resuming from pause
-  if (pausedTime !== null) {
-    totalPaused += Date.now() - pausedTime;
-    pausedTime = null;
-  } else {
-    startTime = Date.now();
-  }
+// -------------------------
+// Alt1 chatbox setup
+// -------------------------
 
-  timerInterval = setInterval(updateTimerDisplay, 50); // update ~20x per sec
+window.setTimeout(() => {
+    reader.readargs = {
+        colors: [
+            A1lib.mixColor(255, 255, 255),
+            A1lib.mixColor(0, 255, 0),
+            A1lib.mixColor(30, 255, 0),
+            A1lib.mixColor(30, 255, 0)
+        ],
+        backwards: true,
+    };
+
+    $(".nis").append("<span>Searching for chatboxes</span>");
+    $(".nis").append("<div>If this is showing long, chatbox reading might not work.</div>");
+    reader.find();
+
+    const findChat = setInterval(() => {
+        if (reader.pos === null) reader.find();
+        else {
+            $(".nis span:contains('Searching for chatboxes')").remove();
+            $(".nis div:contains('chatbox reading might not work')").remove();
+            clearInterval(findChat);
+            reader.pos.mainbox = reader.pos.boxes[0];
+            showSelectedChat(reader.pos);
+
+            chatInterval = setInterval(() => {
+                readChatbox();
+            }, 200);
+        }
+    }, 1000);
+}, 0);
+
+function showSelectedChat(chat) {
+    try {
+        alt1.overLayRect(
+            appColor,
+            chat.mainbox.rect.x,
+            chat.mainbox.rect.y,
+            chat.mainbox.rect.width,
+            chat.mainbox.rect.height,
+            2000,
+            5
+        );
+    } catch {}
+}
+
+// -------------------------
+// Chatbox parsing
+// -------------------------
+
+function readChatbox() {
+    const opts = reader.read() || [];
+    let chatStr = "";
+    let chatArr;
+
+    if (opts.length) {
+        for (let line in opts) {
+            if (!opts[line].text.match(timestampRegex) && line == "0") continue;
+            if (opts[line].text.match(timestampRegex)) {
+                if (line > 0) chatStr += "\n";
+                chatStr += opts[line].text + " ";
+                continue;
+            }
+            chatStr += opts[line].text;
+        }
+    }
+
+    if (chatStr.trim()) chatArr = chatStr.trim().split("\n");
+
+    if (chatArr) {
+        for (let line of chatArr) {
+            const chatLine = line.trim();
+            if (chatLine && !isInHistory(chatLine)) {
+                checkLine(chatLine);
+            }
+        }
+        updateChatHistory(chatArr);
+    }
+}
+
+function isInHistory(chatLine) {
+    if (!sessionStorage.chatHistory) return false;
+    return sessionStorage.chatHistory.split("\n").includes(chatLine);
+}
+
+function updateChatHistory(chatArr) {
+    if (!sessionStorage.chatHistory) {
+        sessionStorage.chatHistory = chatArr.join("\n");
+        return;
+    }
+    let history = sessionStorage.chatHistory.split("\n");
+    while (history.length > 100) history.shift();
+    chatArr.forEach(line => history.push(line.trim()));
+    sessionStorage.chatHistory = history.join("\n");
+}
+
+// -------------------------
+// Timer logic
+// -------------------------
+
+function startTimer() {
+    if (isRunning) return;
+    isRunning = true;
+
+    startTime = performance.now() - pausedTime;
+
+    timerInterval = setInterval(() => {
+        const elapsed = performance.now() - startTime;
+        updateTimerDisplay(elapsed);
+    }, 50);
+
+    if (!displayInterval)
+        displayInterval = setInterval(updateDisplay, 600);
 }
 
 function stopTimer() {
-  if (!running) return;
-  running = false;
-  pausedTime = Date.now();
-  clearInterval(timerInterval);
-}
+    if (!isRunning) return;
 
-function resetAll() {
-    fastboiPP = 0;
-    camoPP = 0;
-    normalPP = 0;
-    failedPP = 0
-    running = false;
-    startTime = null;
-    pausedTime = null;
-    totalPaused = 0;
+    isRunning = false;
 
     clearInterval(timerInterval);
+    timerInterval = null;
+
+    let rawElapsed = performance.now() - startTime;
+    let wait = msUntilNextTick(rawElapsed);
+    pausedTime = rawElapsed + wait;
+
+    updateTimerDisplay(pausedTime);
+    updateDisplay();
+
+    if (displayInterval) {
+        clearInterval(displayInterval);
+        displayInterval = null;
+    }
+}
+
+function resetTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+
+    isRunning = false;
+    startTime = 0;
+    pausedTime = 0;
+
+    normalPP = 0;
+    fastboiPP = 0;
+    camoPP = 0;
+    failedPP = 0;
+
     updateTimerDisplay(0);
     updateDisplay();
-    clearSave();
-  }
 
-// Helper function to convert timer data to ms
-function getElapsedTimeMs() {
-  if (!startTime) return 0;
-
-  if (running) {
-    return Date.now() - startTime - totalPaused;
-  } else {
-    return pausedTime ? pausedTime - startTime - totalPaused : 0;
-  }
+    if (displayInterval) {
+        clearInterval(displayInterval);
+        displayInterval = null;
+    }
 }
 
-// Update timer display in hh:mm:SSS.
-function updateTimerDisplay() {
-  const ms = getElapsedTimeMs();
+// -------------------------
+// Chat line interpretation
+// -------------------------
 
-  const hours   = Math.floor(ms / 3600000);
-  const minutes = Math.floor((ms % 3600000) / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  const millis  = Math.floor(ms % 1000);
+function checkLine(line) {
+    if (isRunning) {
+        // TODO: Add triple/quad loot procs
+        if (line.includes("Your camouflage outfit keeps you hidden")) camoPP++;
+        if (line.includes("Your lightning-fast reactions")) {
+            fastboiPP++;
+            normalPP++;
+        }
+        if (line.includes("You pick the")) normalPP++;
+        if (line.includes("You fail to pick")) failedPP++;
 
-  document.getElementById("timer").textContent =
-    `${String(hours).padStart(2,'0')}:`
-  + `${String(minutes).padStart(2,'0')}:`
-  + `${String(seconds).padStart(2,'0')}.`
-  + `${String(millis).padStart(3,'0')}`;
+        let npcMatch = line.match(/You (?:pick|fail to pick) the (.+?)['’]s pocket/);
+        
+        if (npcMatch) {
+            console.log(line)
+            
+            currentNPC = npcMatch[1].toLowerCase().trim();
+            console.log(currentNPC)
+            updateNpcIcons(currentNPC);
+
+        }
+    } else {
+        if (setting_autoStart && line.includes("You pick the")) {
+            /*if(pausedTime > 0){
+                normalPP++
+            }*/
+            startTimer();
+        }
+    }
 }
 
-  
-  // Animations, just some fun
-  function spawnXPDrop(amount = 1) {
-      const xp = document.createElement("div");
-      xp.className = "xpFloat";
-      xp.textContent = `${amount} XP`;
-      document.getElementById("xpLayer").appendChild(xp);
 
-      // Remove after animation ends
-      setTimeout(() => xp.remove(), 1800);
-  }
+// -------------------------
+// GUI update
+// -------------------------
 
-  // calculate and update everything in the GUI
-  function updateDisplay() {
-    secondsElapsed = (getElapsedTimeMs() / 1000).toFixed(1)
-    hours = secondsElapsed > 0 ? secondsElapsed / 3600 : 0;
+function updateDisplay() {
+    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
+    let elapsedHours = elapsed / 1000 / 3600;
+
     totalPP = normalPP + camoPP + fastboiPP;
+    let safeNormal = normalPP > 0 ? normalPP : 1;
 
-    // Calculate actual PP per hours for eachs source
-    normalPPPerHour = hours > 0 ? (normalPP / hours) : 0;
-    camoPPPerHour = hours > 0 ? (camoPP / hours) : 0; 
-    fastboiPPPerHour = hours > 0 ? (fastboiPP / hours) : 0;
-    totalPPPerhour = hours > 0 ? (totalPP / hours) : 0;
+    normalPPPerHour = elapsedHours > 0 ? (normalPP / elapsedHours) : 0;
+    camoPPPerHour   = elapsedHours > 0 ? (camoPP / elapsedHours) : 0;
+    fastboiPPPerHour= elapsedHours > 0 ? (fastboiPP/ elapsedHours) : 0;
+    totalPPPerhour  = elapsedHours > 0 ? (totalPP / elapsedHours) : 0;
 
-    // Calculate percentages, where normal = 100% 
-    normalPPPercent = ((normalPP / normalPP) * 100);
-    camoPPPercent = ((camoPP / normalPP) *100).toFixed(2);
-    fastboiPPpercent = ((fastboiPP / normalPP) *100).toFixed(2);
+    normalMaxPPPerhour = setting_stickyFingers ? 3000 : 2000;
 
-    // Max normalPP actions per hour 3600 / 1.2 with sticky finger relic!
-    totalMaxPPPerhour = 3000;
-    // Calculate extra procs based on current rate of procs happening
-    camoPPBonus = (camoPP / normalPP) * totalMaxPPPerhour;    
-    fastBonus = (fastboiPP / normalPP) * totalMaxPPPerhour;
-    totalPPPerhourMax = totalMaxPPPerhour + camoPPBonus + fastBonus;
+    camoPPBonus = (camoPP / safeNormal) * normalMaxPPPerhour;
+    fastBonus   = (fastboiPP / safeNormal) * normalMaxPPPerhour;
+    totalPPMax  = normalMaxPPPerhour + camoPPBonus + fastBonus;
 
-    // calculate efficiency
-    effiencyPercent = normalPPPerHour / totalMaxPPPerhour * 100
-    lostPickpockets = totalPPPerhourMax - totalPPPerhour;
+    normalPPPercent = ((totalPP - failedPP) / totalPP) * 100;
+    camoPPPercent   = (camoPP / safeNormal) * 100;
+    fastboiPPpercent= (fastboiPP / safeNormal) * 100;
+    totalPPPercent  = normalPPPercent + camoPPPercent + fastboiPPpercent;
 
-    // Calculate clue gain/loss
-    lostHard = lostPickpockets * 6 / 1000;
-    lostElite = lostPickpockets * 5 / 1000;
+    efficiencyPercent = (normalPPPerHour / normalMaxPPPerhour) * 100;
 
-    gainedHard = totalPPPerhour * 6 / 1000
-    gainedElite = totalPPPerhour * 5 / 1000
+    lostPickpockets = totalPPMax - totalPPPerhour;
 
-    // Update GUI
-    // Counts
+    const npc = npcData[currentNPC] || npcData["default"];
+    const drops = npc.drops;
+
+    const results = drops.map(d => ({
+    label: d.label,
+    gained: totalPP * d.rate,
+    hourly: totalPPPerhour * d.rate,
+    lost: lostPickpockets * d.rate
+    }));
+
+    let lines = [];
+
+    if (results.length === 0) {
+        lines.push("This NPC has no notable tracked drops… or the developer was too lazy to add them.");
+    } else {
+        lines.push(
+            `You <b>should have gained</b> ${
+                results.map(r => `<b>${r.gained.toFixed(2)}</b> ${r.label}`).join(" and ")
+            } by now.`
+        );
+
+        lines.push(
+            `Your <b>current hourly rate</b> is ${
+                results.map(r => `<b>${r.hourly.toFixed(2)}</b> ${r.label}`).join(" and ")
+            }.`
+        );
+
+        lines.push(
+            `You <b>missed</b> ${
+                results.map(r => `<b>${r.lost.toFixed(2)}</b> ${r.label}`).join(" and ")
+            } due to <b>${lostPickpockets.toFixed(0)}</b> lost pickpockets.`
+        );
+    }
+
+    document.getElementById("efficienyText").innerHTML =
+        lines.map(l => `<div style="margin-bottom:4px;">${l}</div>`).join("");
+
+    // Update GUI elements
     document.getElementById("normalCount").textContent = normalPP;
     document.getElementById("camoCount").textContent = camoPP;
     document.getElementById("fastCount").textContent = fastboiPP;
     document.getElementById("failedCount").textContent = failedPP;
-    document.getElementById("totalCount").textContent = totalPP;
+    document.getElementById("totalCount").textContent  = totalPP;
 
-    // Normal procs
     document.getElementById("pphNormalActual").textContent = normalPPPerHour.toFixed(0);
-    document.getElementById("pphNormalMax").textContent = 3000;
-    document.getElementById("pphNormalPer").textContent = normalPPPercent;
+    document.getElementById("pphNormalMax").textContent = normalMaxPPPerhour.toFixed(0);
+    document.getElementById("pphNormalPer").textContent = normalPPPercent.toFixed(2);
 
-    // Camo procs
     document.getElementById("pphCamoActual").textContent = camoPPPerHour.toFixed(0);
     document.getElementById("pphCamoMax").textContent = camoPPBonus.toFixed(0);
-    document.getElementById("pphCamoPer").textContent = camoPPPercent;
-    
-    // Agility procs
+    document.getElementById("pphCamoPer").textContent = camoPPPercent.toFixed(2);
+
     document.getElementById("pphAgilityActual").textContent = fastboiPPPerHour.toFixed(0);
     document.getElementById("pphAgilityMax").textContent = fastBonus.toFixed(0);
-    document.getElementById("pphAgilityPer").textContent = fastboiPPpercent;
+    document.getElementById("pphAgilityPer").textContent = fastboiPPpercent.toFixed(2);
 
-    // Total
     document.getElementById("pphTotalActual").textContent = totalPPPerhour.toFixed(0);
-    document.getElementById("pphTotalMax").textContent = totalPPPerhourMax.toFixed(0);
-    document.getElementById("pphTotalPer").textContent = (((camoPP / normalPP)*100) + ((normalPP / normalPP)*100) + ((fastboiPP / normalPP)*100)).toFixed(2)
-  
-    // adjust bar and flavortext
-    document.getElementById('efficiencyPercent').textContent = effiencyPercent.toFixed(2) + '%';
-    document.getElementById('efficiencyBar').style.width = effiencyPercent + '%';
-    document.getElementById('efficienyText').innerHTML =
-      `Per hour, you should have gained <b>${gainedHard.toFixed(2)}</b> hard clues and <b>${gainedElite.toFixed(2)}</b> elite clues.<br>
-      Missed <b>${lostHard.toFixed(2)}</b> hard and <b>${lostElite.toFixed(2)}</b> elite clues because of losing <b>${lostPickpockets.toFixed(0)}</b> pickpockets.`;
+    document.getElementById("pphTotalMax").textContent = totalPPMax.toFixed(0);
+    document.getElementById("pphTotalPer").textContent = totalPPPercent.toFixed(2);
 
-    if(effiencyPercent > 100){
-      printAllToConsole()
-    }
-    updateTimerDisplay();
-  }
+    document.getElementById("efficiencyPercent").textContent = efficiencyPercent.toFixed(2) + '%';
+    document.getElementById("efficiencyBar").style.width = efficiencyPercent + '%';
 
-function printAllToConsole() {
-
- const debugData = {
-    elapsedSeconds: secondsElapsed,
-    elapsedMs: getElapsedTimeMs(),
-    efficiencyPercent: effiencyPercent,
-
-    // Pickpocket stats
-    normalPP,
-    fastboiPP,
-    camoPP,
-    failedPP,
-    totalPP,
-
-    // Per-hour values
-    normalPPPerHour: normalPPPerHour.toFixed(2),
-    camoPPPerHour: camoPPPerHour.toFixed(2),
-    fastboiPPPerHour: fastboiPPPerHour.toFixed(2),
-    totalPPPerHour: totalPPPerhour.toFixed(2),
-
-    // Max theoretical
-    totalPPPerHourMax: totalPPPerhourMax.toFixed(2),
-
-    // Loss calculations
-    lostPickpockets: lostPickpockets.toFixed(2),
-    lostHardClues: lostHard.toFixed(3),
-    lostEliteClues: lostElite.toFixed(3),
-
-    // Gain calculations
-    gainedHardClues: gainedHard.toFixed(3),
-    gainedEliteClues: gainedElite.toFixed(3)
-  };
-
-  console.group("~~~ DEBUG ~~~", "color: orange; font-weight: bold;");
-  console.log("Variable Overview:");
-  console.table(debugData);
-  console.groupEnd();
 }
 
-  // Reader logic
-  function checkLine(line) {
-    if(running){
-      if(line.includes("Your camouflage outfit keeps you hidden and you steal additional loot.")){
-        camoPP++
-        spawnXPDrop(2);
-      }
-      if(line.includes("Your lightning-fast reactions allow you to steal double the loot")){
-        fastboiPP++
-        normalPP++
-        spawnXPDrop(3);
-      }
-        if(line.includes("You pick the Menaphos market guard's pocket.")){
-        normalPP++
-        spawnXPDrop(1);
-      }
-        if(line.includes("You pick the Archaeology professor's pocket.")){
-        normalPP++
-        spawnXPDrop(1);
-      }
-        if(line.includes("You fail to pick the Menaphos market guard's pocket.")){
-        failedPP += 1;
-      }
-        if(line.includes("You fail to pick the Archaeology professor's pocket.")){
-        failedPP += 1;
-      }
+function updateNpcIcons(npcName) {
+    const data = npcData[npcName] || npcData["default"];
 
-      } else{
-      if(line.includes("You pick the Menaphos market guard's pocket.")){
-        console.log("Auto start")
-        icons = document.querySelectorAll(".npcIcon");
+    document.querySelectorAll(".npcIcon").forEach(el => {
+        el.src = data.icon;
+    });
+}
 
-        icons.forEach(icon => {
-          icon.src = "https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77"
+// load sessions
+function buildSessionList() {
+    let raw = localStorage.getItem(SAVE_KEY);
+    let saves;
+
+    try {
+        saves = JSON.parse(raw);
+        if (!Array.isArray(saves)) saves = [];
+    } catch {
+        saves = [];
+    }
+
+    const list = document.getElementById("sessionList");
+    list.innerHTML = "";
+
+    if (saves.length === 0) {
+        list.innerHTML = "<i>No saved sessions.</i>";
+        return;
+    }
+
+    saves.forEach((s, index) => {
+        const date = new Date(s.timestamp).toLocaleString();
+        const totalPP = s.normalPP + s.fastboiPP + s.camoPP;
+
+        let div = document.createElement("div");
+        div.style.marginBottom = "10px";
+        div.style.padding = "8px";
+        div.style.borderBottom = "1px solid #555";
+
+        div.innerHTML = `
+            <b>Session ${index + 1}</b> <span style="opacity:0.7;">(${date})</span><br>
+            Total PP: ${totalPP}<br>
+            Time: ${(s.elapsed / 1000).toFixed(1)}s<br>
+
+            <button class="loadBtn" data-index="${index}"
+                style="margin-top:5px; margin-right:6px;
+                background:#4CAF50; color:white; padding:4px 8px; border:0; border-radius:4px;">
+                Load
+            </button>
+
+            <button class="deleteBtn" data-index="${index}"
+                style="background:#b33131; color:white; padding:4px 8px; border:0; border-radius:4px;">
+                Delete
+            </button>
+        `;
+
+        list.appendChild(div);
+    });
+
+    // Add event listeners for all load buttons
+    document.querySelectorAll(".loadBtn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const index = Number(btn.dataset.index);
+            loadSessionFromIndex(index);
+            document.getElementById("sessionPopup").style.display = "none";
         });
+    });
 
-        startTimer();
-      }
-
-      if(line.includes("You pick the Archaeology professor's pocket.")){
-        console.log("Auto start")
-        icons = document.querySelectorAll(".npcIcon");
-
-        icons.forEach(icon => {
-          icon.src = "https://runescape.wiki/images/Archaeology_professor_icon.png?abc123"
+    // Add event listeners for all delete buttons
+    document.querySelectorAll(".deleteBtn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const index = Number(btn.dataset.index);
+            deleteSession(index);
+            buildSessionList(); // refresh list
         });
-        
-        startTimer();
-        }
-      }
-  }
+    });
+}
+
+function loadSessionFromIndex(i) {
+    let saves = JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
+    if (!saves[i]) return;
+
+    loadSessionIntoTracker(saves[i]);
+}
+
+function deleteSession(i) {
+    let saves = JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
+    saves.splice(i, 1);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
+}
+
+// Timer
+function updateTimerDisplay(ms) {
+    let totalSeconds = Math.floor(ms / 1000);
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+    let milliseconds = Math.round(ms % 1000);
+
+    const formatted =
+        String(hours).padStart(2, '0') + ":" +
+        String(minutes).padStart(2, '0') + ":" +
+        String(seconds).padStart(2, '0') + "." +
+        String(milliseconds).padStart(3, '0');
+
+    document.getElementById("timer").textContent = formatted;
+}
 
 // -------------------------
-// Save / Load
+// Helpers functions
 // -------------------------
-const SAVE_KEY = "ppTrackerSave";
 
-function saveState(saveSnapshot) {
-  const dataToSave = {
-        normalPP: saveSnapshot.normalPP,
-        fastboiPP: saveSnapshot.fastboiPP,
-        camoPP: saveSnapshot.camoPP,
-        failedPP: saveSnapshot.failedPP,
-        elapsedTime: saveSnapshot.secondsElapsed * 1000, // convert seconds back to ms
-        running // preserve current running state
+function msUntilNextTick(elapsed) {
+    const tick = 600; // RuneScape tick = 0.6 seconds
+    const remainder = elapsed % tick;
+    return remainder === 0 ? 0 : (tick - remainder);
+}
+
+// -------------------------
+// Settings
+// -------------------------
+
+document.getElementById("autoStartCheckbox").addEventListener("change", e => {
+    setting_autoStart = e.target.checked;
+    saveSettings();
+});
+
+document.getElementById("stickyFingersCheckbox").addEventListener("change", e => {
+    setting_stickyFingers = e.target.checked;
+    saveSettings();
+    updateDisplay(); // recalc PP/H immediately
+});
+
+function loadSettings() {
+    const raw = localStorage.getItem("ppTrackerSettings");
+    if (raw) {
+        try {
+            const data = JSON.parse(raw);
+            setting_autoStart = !!data.autoStart;
+            setting_stickyFingers = !!data.stickyFingers;
+        } catch (e) {}
+    }
+
+    // Reflect in UI
+    document.getElementById("autoStartCheckbox").checked = setting_autoStart;
+    document.getElementById("stickyFingersCheckbox").checked = setting_stickyFingers;
+}
+
+function saveSettings() {
+    const data = {
+        autoStart: setting_autoStart,
+        stickyFingers: setting_stickyFingers
     };
-
-  localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem("ppTrackerSettings", JSON.stringify(data));
 }
 
-function loadState() {
-  const stored = localStorage.getItem(SAVE_KEY);
-  if (!stored) return;
+// -------------------------
+// Save/load system (MULTI SAVE)
+// -------------------------
 
-  try {
-    const data = JSON.parse(stored);
+function getCurrentSessionData() {
+    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
 
-    normalPP = data.normalPP ?? 0;
-    fastboiPP = data.fastboiPP ?? 0;
-    camoPP = data.camoPP ?? 0;
-    failedPP = data.failedPP ?? 0;
+    return {
+        timestamp: Date.now(),
+        elapsed: elapsed,
+        normalPP,
+        camoPP,
+        fastboiPP,
+        failedPP
+    };
+}
 
-    const elapsed = data.elapsedTime ?? 0;
-    running = false;
+function saveState(snapshot) {
+    let raw = localStorage.getItem(SAVE_KEY);
+    let saves;
 
-    if (running) {
-      startTime = Date.now() - elapsed;
-      timerInterval = setInterval(updateTimerDisplay, 50);
-      pausedTime = null;
-    } else {
-      startTime = Date.now() - elapsed;
-      pausedTime = Date.now();
+    try {
+        saves = JSON.parse(raw);
+        if (!Array.isArray(saves)) saves = [];
+    } catch {
+        saves = [];
     }
 
-    totalPaused = 0;
+    saves.push(snapshot);
 
-    updateDisplay(); // refresh all counters and timer
-  } catch (e) {
-    console.error("Failed to load save", e);
-  }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
+}
+
+// Load all sessions + build UI
+function loadState() {
+    let raw = localStorage.getItem(SAVE_KEY);
+    let saves;
+
+    try {
+        saves = JSON.parse(raw);
+        if (!Array.isArray(saves)) saves = [];
+    } catch {
+        saves = [];
+    }
+
+    const container = document.getElementById("previousSessions");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    saves.forEach((s, index) => {
+        // intentionally empty now — legacy UI removed
+    });
+}
+
+
+function loadSessionIntoTracker(s) {
+    stopTimer();
+
+    normalPP = s.normalPP;
+    camoPP = s.camoPP;
+    fastboiPP = s.fastboiPP;
+    failedPP = s.failedPP;
+
+    pausedTime = s.elapsed;
+    startTime = performance.now() - pausedTime;
+
+    updateTimerDisplay(pausedTime);
+    updateDisplay();
+
+    console.log("Session loaded:", s);
 }
 
 function clearSave() {
-  localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(SAVE_KEY);
 }
 
-// -------------------------
-// Auto-load on page start
-// -------------------------
-
-window.addEventListener("DOMContentLoaded", loadState);
+window.addEventListener("DOMContentLoaded", () => {
+    loadSettings();
+    loadState();
+});

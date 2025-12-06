@@ -105,9 +105,10 @@
     <!-- Buttons -->
     <div>
       <button id="startBtn">Start Timer</button>
-      <button id="stopBtn">Stop Timer</button>
+      <button id="stopBtn">Pause Timer</button>
       <button id="resetBtn">Reset</button>
       <button id="saveBtn">Save session</button>
+      <button id="openSessionPopup">Load session</button>
     </div>
 
     <!-- CLOCK -->
@@ -127,7 +128,7 @@
           <tr style="border-bottom:2px solid #b18b29;">
             <th></th>
             <th>Total</th>
-            <th><img class="npcIcon" src="https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77" width="28"></th>
+            <th><img class="npcIcon" src="https://runescape.wiki/images/Irksol_chathead.png?68578" width="28"></th>
             <th><img src="https://runescape.wiki/images/Master_camouflage_head.png?1a3d1" width="28"></th>
             <th><img src="https://runescape.wiki/images/Agility-icon.png?9a56e" width="28"></th>
             <th><img src="https://runescape.wiki/images/No_pickpocket_icon.png?608a5" width="28"></th>
@@ -164,7 +165,7 @@
       </thead>
       <tbody>
         <tr>
-          <td><img class="npcIcon" src="https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77" width="24"> Normal</td>
+          <td><img class="npcIcon" src="https://runescape.wiki/images/Irksol_chathead.png?68578" width="24"> Normal</td>
           <td id="pphNormalActual">0</td>
           <td id="pphNormalMax">3000</td>
           <td id="pphNormalPer">0%</td>
@@ -263,8 +264,70 @@
                 font-weight: bold;
                 cursor: pointer;
             ">No</button>
-</div>
+  </div>
+  <div id="previousSessions" style="margin-bottom: 15px; text-align: left;"></div>
+  <div id="sessionPopup" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(30,30,30,0.95);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        font-family: Verdana, sans-serif;
+        font-size: 14px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+        z-index: 9999;
+        display: none;
+        min-width: 250px;
+        text-align: center;
+     ">
+    <div class="popupWindow">
+      <h2>Saved Sessions</h2>
 
+      <div id="sessionList" style="
+        max-height:300px;
+        overflow-y:auto;
+        padding:10px;
+        border:1px solid #b18b29;
+        margin-bottom:15px;
+      "></div>
+
+      <button id="closeSessionPopup" >Close</button>
+    </div>
+  </div>
+  
+
+  <!-- SETTINGS -->
+  <div style="
+      background:rgba(30,30,30,0.8);
+      padding:10px;
+      border:2px solid #b18b29;
+      border-radius:8px;
+      color:#ffd98a;
+      margin-bottom:15px;
+  ">
+    <h3 style="margin:0 0 10px; color:#ffd98a;">
+      <img src="https://runescape.wiki/images/Options_icon.png?bfd51" width="28" 
+          style="vertical-align:middle; margin-right:6px;">
+      Settings
+    </h3>
+
+    <div style="display:flex; align-items:center; gap:10px; font-size:15px;">
+      <input type="checkbox" id="autoStartCheckbox" style="transform:scale(1.3); cursor:pointer;">
+      <label for="autoStartCheckbox" style="cursor:pointer; color:#ffebc8;">
+        Auto start tracking
+      </label>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; font-size:15px;">
+      <input type="checkbox" checked=True id="stickyFingersCheckbox" style="transform:scale(1.3); cursor:pointer;">
+      <label for="stickyFingersCheckbox" style="cursor:pointer; color:#ffebc8;">
+        Sticky fingers relic
+      </label>
+    </div>
+  </div>
    
   </body>
   <script src="scripts/script.js"></script>
