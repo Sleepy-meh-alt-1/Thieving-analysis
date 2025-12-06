@@ -246,9 +246,27 @@ function startTimer() {
         updateTimerDisplay(elapsed);
     }, 50);
 
-    if (!displayInterval)
-        displayInterval = setInterval(updateDisplay, 600);
+    startDisplayLoop();
 }
+
+function startDisplayLoop() {
+    function tick() {
+        if (!isRunning) return;
+
+        updateDisplay();
+
+        const elapsed = performance.now() - startTime;
+        const nextDelay = msUntilNextTick(elapsed);
+
+        displayInterval = setTimeout(tick, nextDelay);
+    }
+
+    const elapsed = performance.now() - startTime;
+    const firstDelay = msUntilNextTick(elapsed);
+
+    displayInterval = setTimeout(tick, firstDelay);
+}
+
 
 function stopTimer() {
     if (!isRunning) return;
@@ -266,7 +284,7 @@ function stopTimer() {
     updateDisplay();
 
     if (displayInterval) {
-        clearInterval(displayInterval);
+        clearTimeout(displayInterval);
         displayInterval = null;
     }
 }
@@ -334,7 +352,8 @@ function checkLine(line) {
 
 function updateDisplay() {
     let elapsed = isRunning ? performance.now() - startTime : pausedTime;
-    let elapsedHours = elapsed / 1000 / 3600;
+    let completedTicks = Math.floor(elapsed / 600);
+    let elapsedHours = (completedTicks * 600) / 1000 / 3600;
 
     totalPP = normalPP + camoPP + fastboiPP;
     let safeNormal = normalPP > 0 ? normalPP : 1;
