@@ -16,6 +16,7 @@ let startTime = 0;
 let pausedTime = 0;
 let timerInterval = null;
 let displayInterval = null;
+let lastRenderedTick = -1;
 
 // Counters
 let normalPP = 0;
@@ -242,31 +243,26 @@ function startTimer() {
     startTime = performance.now() - pausedTime;
 
     timerInterval = setInterval(() => {
-        const elapsed = performance.now() - startTime;
-        updateTimerDisplay(elapsed);
+        updateTimerDisplay(performance.now() - startTime);
     }, 50);
 
-    startDisplayLoop()
-
+    requestAnimationFrame(tickLoop);
 }
 
-function startDisplayLoop() {
-    function tick() {
-        if (!isRunning) return;
-
-        updateDisplay();
-
-        const elapsed = performance.now() - startTime;
-        const nextDelay = msUntilNextTick(elapsed);
-
-        displayInterval = setTimeout(tick, nextDelay);
-    }
+function tickLoop() {
+    if (!isRunning) return;
 
     const elapsed = performance.now() - startTime;
-    const firstDelay = msUntilNextTick(elapsed);
+    const completedTicks = Math.floor(elapsed / 600);
 
-    displayInterval = setTimeout(tick, 600);
+    if (completedTicks !== lastRenderedTick) {
+        lastRenderedTick = completedTicks;
+        updateDisplay();
+    }
+
+    requestAnimationFrame(tickLoop);
 }
+
 
 
 function stopTimer() {
@@ -323,7 +319,7 @@ function checkLine(line) {
             fastboiPP++;
             normalPP++;
         }
-        if (line.includes("You pick the")) normalPP++, updateDisplay();
+        if (line.includes("You pick the")) normalPP++;
         if (line.includes("You fail to pick")) failedPP++;
 
         let npcMatch = line.match(/You (?:pick|fail to pick) the (.+?)['’]s pocket/);
@@ -352,66 +348,78 @@ function checkLine(line) {
 // -------------------------
 
 function updateDisplay() {
-    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
-    //let elapsedHours = elapsed / 1000 / 3600;
-
-    
-    let completedTicks = Math.floor(elapsed / 600);
-    let elapsedHours = (completedTicks * 600) / 1000 / 3600;
-    
-
-    totalPP = normalPP + camoPP + fastboiPP;
-    let safeNormal = normalPP > 0 ? normalPP : 1;
-
-    normalPPPerHour = elapsedHours > 0 ? (normalPP / elapsedHours) : 0;
-    camoPPPerHour   = elapsedHours > 0 ? (camoPP / elapsedHours) : 0;
-    fastboiPPPerHour= elapsedHours > 0 ? (fastboiPP/ elapsedHours) : 0;
-    totalPPPerhour  = elapsedHours > 0 ? (totalPP / elapsedHours) : 0;
-
-    normalMaxPPPerhour = setting_stickyFingers ? 3000 : 2000;
-
-    camoPPBonus = (camoPP / safeNormal) * normalMaxPPPerhour;
-    fastBonus   = (fastboiPP / safeNormal) * normalMaxPPPerhour;
-    totalPPMax  = normalMaxPPPerhour + camoPPBonus + fastBonus;
-
-    normalPPPercent = ((totalPP - failedPP) / totalPP) * 100;
-    camoPPPercent   = (camoPP / safeNormal) * 100;
-    fastboiPPpercent= (fastboiPP / safeNormal) * 100;
-    totalPPPercent  = normalPPPercent + camoPPPercent + fastboiPPpercent;
-
-    efficiencyPercent = (normalPPPerHour / normalMaxPPPerhour) * 100
-
-    /*
-    const ticksPerAction = 2;
+    // ---- Tick-locked time ----
+    const elapsed = isRunning ? performance.now() - startTime : pausedTime;
+    const completedTicks = Math.floor(elapsed / 600);
+    const ticksPerAction = setting_stickyFingers ? 2 : 3;;
     const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
 
+    const elapsedHours = (completedTicks * 600) / 3600000;
+
+    // ---- Counts ----
+    const totalPP = normalPP + camoPP + fastboiPP;
+    const safeNormal = normalPP > 0 ? normalPP : 1;
+
+    // ---- PP/H (action-slot based, perfectly stable) ----
+    const actionsPerHour = 3600000 / (ticksPerAction * 600); // 3000
+
+    const normalPPPerHour  = completedActionSlots > 0
+        ? (normalPP / completedActionSlots) * actionsPerHour
+        : 0;
+
+    const camoPPPerHour = completedActionSlots > 0
+        ? (camoPP / completedActionSlots) * actionsPerHour
+        : 0;
+
+    const fastboiPPPerHour = completedActionSlots > 0
+        ? (fastboiPP / completedActionSlots) * actionsPerHour
+        : 0;
+
+    const totalPPPerHour = completedActionSlots > 0
+        ? (totalPP / completedActionSlots) * actionsPerHour
+        : 0;
+
+    const normalMaxPPPerHour = setting_stickyFingers ? 3000 : 2000;
+
+    // ---- PROC BONUSES ----
+    const camoPPBonus = (camoPP / safeNormal) * normalMaxPPPerHour;
+    const fastBonus   = (fastboiPP / safeNormal) * normalMaxPPPerHour;
+    const totalPPMax  = normalMaxPPPerHour + camoPPBonus + fastBonus;
+
+    // ---- TABLE PERCENTS (PURE RATIOS) ----
+    const normalPPPercent   = totalPP > 0 ? ((totalPP - failedPP) / totalPP) * 100 : 100;
+    const camoPPPercent     = (camoPP / safeNormal) * 100;
+    const fastboiPPPercent  = (fastboiPP / safeNormal) * 100;
+    const totalPPPercent    = normalPPPercent + camoPPPercent + fastboiPPPercent;
+
+    // ---- EFFICIENCY (ACTION-BASED, NOT TIME-BASED) ----
+    let efficiencyPercent;
     if (completedActionSlots === 0) {
         efficiencyPercent = 100;
     } else {
         efficiencyPercent = (normalPP / completedActionSlots) * 100;
     }
+    efficiencyPercent = Math.min(100, efficiencyPercent);
 
-    if (efficiencyPercent > 100) efficiencyPercent = 100;
-    */
+    // ---- LOST ACTIONS ----
+    const lostPickpockets = Math.max(0, totalPPMax - totalPPPerHour);
 
-
-
-    lostPickpockets = totalPPMax - totalPPPerhour;
-
+    // ---- NPC DROPS ----
     const npc = npcData[currentNPC] || npcData["default"];
     const drops = npc.drops;
 
     const results = drops.map(d => ({
-    label: d.label,
-    gained: totalPP * d.rate,
-    hourly: totalPPPerhour * d.rate,
-    lost: lostPickpockets * d.rate
+        label: d.label,
+        gained: totalPP * d.rate,
+        hourly: totalPPPerHour * d.rate,
+        lost: lostPickpockets * d.rate
     }));
 
+    // ---- FLAVOUR TEXT ----
     let lines = [];
 
     if (results.length === 0) {
-        lines.push("This NPC has no notable tracked drops… or the developer was too lazy to add them.");
+        lines.push("This NPC has no notable tracked drops… yet.");
     } else {
         lines.push(
             `You <b>should have gained</b> ${
@@ -435,7 +443,7 @@ function updateDisplay() {
     document.getElementById("efficienyText").innerHTML =
         lines.map(l => `<div style="margin-bottom:4px;">${l}</div>`).join("");
 
-    // Update GUI elements
+    // ---- GUI UPDATES ----
     document.getElementById("normalCount").textContent = normalPP;
     document.getElementById("camoCount").textContent = camoPP;
     document.getElementById("fastCount").textContent = fastboiPP;
@@ -443,26 +451,29 @@ function updateDisplay() {
     document.getElementById("totalCount").textContent  = totalPP;
 
     document.getElementById("pphNormalActual").textContent = normalPPPerHour.toFixed(0);
-    document.getElementById("pphNormalMax").textContent = normalMaxPPPerhour.toFixed(0);
-    document.getElementById("pphNormalPer").textContent = normalPPPercent.toFixed(2);
+    document.getElementById("pphNormalMax").textContent    = normalMaxPPPerHour.toFixed(0);
+    document.getElementById("pphNormalPer").textContent    = normalPPPercent.toFixed(2);
 
-    document.getElementById("pphCamoActual").textContent = camoPPPerHour.toFixed(0);
-    document.getElementById("pphCamoMax").textContent = camoPPBonus.toFixed(0);
-    document.getElementById("pphCamoPer").textContent = camoPPPercent.toFixed(2);
+    document.getElementById("pphCamoActual").textContent   = camoPPPerHour.toFixed(0);
+    document.getElementById("pphCamoMax").textContent      = camoPPBonus.toFixed(0);
+    document.getElementById("pphCamoPer").textContent      = camoPPPercent.toFixed(2);
 
     document.getElementById("pphAgilityActual").textContent = fastboiPPPerHour.toFixed(0);
-    document.getElementById("pphAgilityMax").textContent = fastBonus.toFixed(0);
-    document.getElementById("pphAgilityPer").textContent = fastboiPPpercent.toFixed(2);
+    document.getElementById("pphAgilityMax").textContent    = fastBonus.toFixed(0);
+    document.getElementById("pphAgilityPer").textContent    = fastboiPPPercent.toFixed(2);
 
-    document.getElementById("pphTotalActual").textContent = totalPPPerhour.toFixed(0);
-    document.getElementById("pphTotalMax").textContent = totalPPMax.toFixed(0);
-    document.getElementById("pphTotalPer").textContent = totalPPPercent.toFixed(2);
+    document.getElementById("pphTotalActual").textContent = totalPPPerHour.toFixed(0);
+    document.getElementById("pphTotalMax").textContent    = totalPPMax.toFixed(0);
+    document.getElementById("pphTotalPer").textContent    = totalPPPercent.toFixed(2);
 
-    document.getElementById("efficiencyPercent").textContent = efficiencyPercent.toFixed(2) + '%';
-    document.getElementById("efficiencyBar").style.width = efficiencyPercent + '%';
+    document.getElementById("efficiencyPercent").textContent =
+        efficiencyPercent.toFixed(2) + "%";
+    document.getElementById("efficiencyBar").style.width =
+        efficiencyPercent + "%";
 
-
+    console.log({ normalPP, completedActionSlots, efficiencyPercent });
 }
+
 
 function updateNpcIcons(npcName) {
     const data = npcData[npcName] || npcData["default"];
