@@ -17,6 +17,9 @@ let pausedTime = 0;
 let timerInterval = null;
 let displayInterval = null;
 let lastRenderedTick = -1;
+let tickOffset = 0;
+let lastCompletedActionSlot = 0;
+
 
 // Counters
 let normalPP = 0;
@@ -34,31 +37,34 @@ const SAVE_KEY = "ppTrackerSave";
 let setting_autoStart = false;
 let setting_stickyFingers = true;
 
+let ticksPerAction = setting_stickyFingers ? 2 : 3;
+
+
 // icons
 let currentNPC = "";
 const npcData = {
     "menaphos market guard": {
         icon: "https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77",
         drops: [
-            { key: "hard",  label: "hard clues",   rate: 6 / 1000 },
-            { key: "elite", label: "elite clues",  rate: 5 / 1000 }
+            { key: "Sealed clue scroll (elite)", label: "Sealed clue scroll (elite)", icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28elite%29.png?82229", rate: 500 / 100000 },
+            { key: "Sealed clue scroll (hard)", label: "Sealed clue scroll (hard)", icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28hard%29.png?64dd1", rate: 6 / 1000 },
         ]
     },
 
     "archaeology professor": {
         icon: "https://runescape.wiki/images/Archaeology_professor_icon.png?dae9b",
         drops: [
-            { key: "tetra", label: "tetra pieces",      rate: 1 / 1000 },
-            { key: "arch",  label: "arch boost items", rate: 2 / 1000 },
-            { key: "artefact",  label: "artefacts", rate: 1 / 1000 },
-            
+            { key: "Coins", label: "Coins", icon: "https://runescape.wiki/images/Coins_250.png?ddfd5", rate: 736 / 1000 },
+            { key: "Chronotes", label: "Chronotes", icon: "https://runescape.wiki/images/Chronotes.png?69a3c", rate: 175 / 1000 },
+            { key: "Binding contract", label: "Binding contract", icon: "https://runescape.wiki/images/Binding_contract.png?c9b02", rate: 10 / 1000 },
+            { key: "Tetracompass piece", label: "Tetracompass piece", icon: "https://runescape.wiki/images/Tetracompass_piece_%28left%29.png?b135a", rate: 1 / 1000 },
         ]
     },
 
     "h.a.m. female follower": {
         icon: "https://runescape.wiki/images/H.A.M._Member_%28female%29_icon.png?31b9d",
         drops: [
-            { key: "easy", label: "easy clues", rate: 1 / 100 }
+            { key: "easy", icon: "easy clues", rate: 1 / 100 }
         ]
     },
 
@@ -77,36 +83,37 @@ document.getElementById("startBtn").addEventListener("click", startTimer);
 document.getElementById("stopBtn").addEventListener("click", stopTimer);
 document.getElementById("resetBtn").addEventListener("click", resetTimer);
 document.getElementById("saveBtn").addEventListener("click", () => {
-    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
-    const wait = msUntilNextTick(elapsed);
+    if (!isRunning) return;
 
-    setTimeout(() => {
-        saveSnapshot = getCurrentSessionData();
+    const ticksPerAction = setting_stickyFingers ? 2 : 3;
 
-        let alignedElapsed = saveSnapshot.elapsed;
-        let elapsedSec = alignedElapsed / 1000;
-        let elapsedHours = elapsedSec / 3600;
+    const waitForNextAction = () => {
+        const elapsed = performance.now() - startTime;
+        const rawTicks = Math.floor(elapsed / 600);
+        const completedTicks = Math.max(0, rawTicks + tickOffset);
+        const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
 
-        let totalPP = saveSnapshot.normalPP + saveSnapshot.camoPP + saveSnapshot.fastboiPP;
-        let normalPPPerHour = elapsedHours > 0 ? saveSnapshot.normalPP / elapsedHours : 0;
-        let efficiency = (normalPPPerHour / 3000) * 100;
+        if (
+            !saveSnapshot ||
+            completedActionSlots > saveSnapshot.completedActionSlots
+        ) {
+            saveSnapshot = buildSnapshot(completedActionSlots);
+            buildSavePreview(saveSnapshot);
+            document.getElementById("confirmSavePopup").style.display = "block";
+        } else {
+            requestAnimationFrame(waitForNextAction);
+        }
+    };
 
-        const preview = document.getElementById("saveDataPreview");
-        preview.innerHTML = `
-            <div style="color:#ffcc00; margin-bottom:8px;">
-                <i>Data is saved on the <b>next game tick</b> (0.6s), not the exact click moment. These values will be saved:</i>
-            </div>
-            <div><b>Normal PP:</b> ${saveSnapshot.normalPP}</div>
-            <div><b>Fastboi PP:</b> ${saveSnapshot.fastboiPP}</div>
-            <div><b>Camo PP:</b> ${saveSnapshot.camoPP}</div>
-            <div><b>Failed PP:</b> ${saveSnapshot.failedPP}</div>
-            <br>
-            <div><b>Seconds Elapsed:</b> ${elapsedSec.toFixed(1)}</div>
-            <div><b>Efficiency:</b> ${efficiency.toFixed(2)}%</div>
-        `;
+    // mark current state so we know when next action happens
+    const elapsed = performance.now() - startTime;
+    const rawTicks = Math.floor(elapsed / 600);
+    const completedTicks = Math.max(0, rawTicks + tickOffset);
+    saveSnapshot = {
+        completedActionSlots: Math.floor(completedTicks / ticksPerAction)
+    };
 
-        document.getElementById("confirmSavePopup").style.display = "block";
-    }, wait);
+    waitForNextAction();
 });
 
 document.getElementById("confirmSaveYes").addEventListener("click", () => {
@@ -131,6 +138,12 @@ document.getElementById("openSessionPopup").addEventListener("click", () => {
 
 document.getElementById("closeSessionPopup").addEventListener("click", () => {
     document.getElementById("sessionPopup").style.display = "none";
+});
+
+
+document.getElementById("tickOffsetInput").addEventListener("input", e => {
+    tickOffset = Number(e.target.value) || 0;
+    updateDisplay();
 });
 
 // -------------------------
@@ -274,7 +287,7 @@ function stopTimer() {
     timerInterval = null;
 
     let rawElapsed = performance.now() - startTime;
-    let wait = msUntilNextTick(rawElapsed);
+    let wait = 0 // msUntilNextTick(rawElapsed);
     pausedTime = rawElapsed + wait;
 
     updateTimerDisplay(pausedTime);
@@ -297,6 +310,9 @@ function resetTimer() {
     fastboiPP = 0;
     camoPP = 0;
     failedPP = 0;
+    document.getElementById("tickOffsetInput").value = 0
+    tickOffset = 0
+    currentNPC = "default"
 
     updateTimerDisplay(0);
     updateDisplay();
@@ -324,9 +340,7 @@ function checkLine(line) {
 
         let npcMatch = line.match(/You (?:pick|fail to pick) the (.+?)['’]s pocket/);
         
-        if (npcMatch) {
-            console.log(line)
-            
+        if (npcMatch) {          
             currentNPC = npcMatch[1].toLowerCase().trim();
             console.log(currentNPC)
             updateNpcIcons(currentNPC);
@@ -334,9 +348,6 @@ function checkLine(line) {
         }
     } else {
         if (setting_autoStart && line.includes("You pick the")) {
-            /*if(pausedTime > 0){
-                normalPP++
-            }*/
             startTimer();
         }
     }
@@ -350,9 +361,12 @@ function checkLine(line) {
 function updateDisplay() {
     // ---- Tick-locked time ----
     const elapsed = isRunning ? performance.now() - startTime : pausedTime;
-    const completedTicks = Math.floor(elapsed / 600);
-    const ticksPerAction = setting_stickyFingers ? 2 : 3;;
+    const rawTicks = Math.floor(elapsed / 600);
+    const completedTicks = Math.max(0, rawTicks + tickOffset);    
+    const ticksPerAction = setting_stickyFingers ? 2 : 3;
     const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
+    lastCompletedActionSlot = completedActionSlots;
+
 
     const elapsedHours = (completedTicks * 600) / 3600000;
 
@@ -399,7 +413,6 @@ function updateDisplay() {
     } else {
         efficiencyPercent = (normalPP / completedActionSlots) * 100;
     }
-    efficiencyPercent = Math.min(100, efficiencyPercent);
 
     // ---- LOST ACTIONS ----
     const lostPickpockets = Math.max(0, totalPPMax - totalPPPerHour);
@@ -410,38 +423,56 @@ function updateDisplay() {
 
     const results = drops.map(d => ({
         label: d.label,
+        icon: d.icon,
         gained: totalPP * d.rate,
         hourly: totalPPPerHour * d.rate,
         lost: lostPickpockets * d.rate
     }));
 
-    // ---- FLAVOUR TEXT ----
-    let lines = [];
+    let html = `
+    <table style="
+        width:100%;
+        border-collapse:collapse;
+        margin-top:6px;
+        font-size:13px;
+    ">
+        <thead>
+            <tr style="border-bottom:1px solid #b18b29;">
+                <th style="text-align:left;">Drop</th>
+                <th style="text-align:left;"></th>
+                <th style="text-align:right;">Gained</th>
+                <th style="text-align:right;">Hourly rate</th>
+                <th style="text-align:right;">Missed/H</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
     if (results.length === 0) {
-        lines.push("This NPC has no notable tracked drops… yet.");
+        html += `
+            <tr>
+                <td colspan="4" style="opacity:0.75; padding-top:6px;">
+                    No notable tracked drops for this NPC.
+                </td>
+            </tr>
+        `;
     } else {
-        lines.push(
-            `You <b>should have gained</b> ${
-                results.map(r => `<b>${r.gained.toFixed(2)}</b> ${r.label}`).join(" and ")
-            } by now.`
-        );
-
-        lines.push(
-            `Your <b>current hourly rate</b> is ${
-                results.map(r => `<b>${r.hourly.toFixed(2)}</b> ${r.label}`).join(" and ")
-            }.`
-        );
-
-        lines.push(
-            `You <b>missed</b> ${
-                results.map(r => `<b>${r.lost.toFixed(2)}</b> ${r.label}`).join(" and ")
-            } due to <b>${lostPickpockets.toFixed(0)}</b> lost pickpockets.`
-        );
+        results.forEach(r => {
+            html += `
+            <tr>
+                <td><img src="${r.icon}" heigth="24"></td>
+                <td style="text-align:left;">${r.label}</td>
+                <td style="text-align:right;">${r.gained.toFixed(2)}</td>
+                <td style="text-align:right;">${r.hourly.toFixed(2)}</td>
+                <td style="text-align:right;">${r.lost.toFixed(2)}</td>
+            </tr>
+            `;
+        });
     }
 
-    document.getElementById("efficienyText").innerHTML =
-        lines.map(l => `<div style="margin-bottom:4px;">${l}</div>`).join("");
+    html += `</tbody></table>`;
+
+    document.getElementById("efficienyText").innerHTML = html;
 
     // ---- GUI UPDATES ----
     document.getElementById("normalCount").textContent = normalPP;
@@ -471,12 +502,27 @@ function updateDisplay() {
     document.getElementById("efficiencyBar").style.width =
         efficiencyPercent + "%";
 
-    console.log({ normalPP, completedActionSlots, efficiencyPercent });
+    const missedActionSlots = completedActionSlots - normalPP;
+
+    if(missedActionSlots == 0){
+            document.getElementById("missedActionsText").textContent = " (Perfect)";
+    } else {
+        if(missedActionSlots > 0){
+            document.getElementById("missedActionsText").textContent = ` (LOST ${missedActionSlots} PP)`;
+        } else {
+            document.getElementById("missedActionsText").textContent = ` (GAINED ${Math.abs(missedActionSlots)} PP?)`;
+
+        }
+    }
+
+
 }
 
 
 function updateNpcIcons(npcName) {
     const data = npcData[npcName] || npcData["default"];
+
+    console.log(data)
 
     document.querySelectorAll(".npcIcon").forEach(el => {
         el.src = data.icon;
@@ -591,6 +637,59 @@ function msUntilNextTick(elapsed) {
     return remainder === 0 ? 0 : (tick - remainder);
 }
 
+function buildSnapshot(completedActionSlots) {
+    const ticksPerAction = setting_stickyFingers ? 2 : 3;
+    const actionsPerHour = 3600000 / (ticksPerAction * 600);
+
+    const normalPPPerHour =
+        completedActionSlots > 0
+            ? (normalPP / completedActionSlots) * actionsPerHour
+            : 0;
+
+    const efficiency =
+        completedActionSlots > 0
+            ? Math.min(100, (normalPP / completedActionSlots) * 100)
+            : 100;
+
+    return {
+        timestamp: Date.now(),
+        completedActionSlots,
+        ticksPerAction,
+        tickOffset,
+        normalPP,
+        camoPP,
+        fastboiPP,
+        failedPP,
+
+        currentNPC,
+        normalPPPerHour,
+        efficiency
+    };
+}
+
+function buildSavePreview(s) {
+    const preview = document.getElementById("saveDataPreview");
+
+    preview.innerHTML = `
+        <div style="color:#ffcc00; margin-bottom:8px;">
+            <i>
+                Data will be saved on the <b>next completed pickpocket action</b>.
+            </i>
+        </div>
+
+        <div><b>Normal PP:</b> ${s.normalPP}</div>
+        <div><b>Fastboi PP:</b> ${s.fastboiPP}</div>
+        <div><b>Camo PP:</b> ${s.camoPP}</div>
+        <div><b>Failed PP:</b> ${s.failedPP}</div>
+
+        <br>
+
+        <div><b>Completed actions:</b> ${s.completedActionSlots}</div>
+        <div><b>PP/H:</b> ${s.normalPPPerHour.toFixed(0)}</div>
+        <div><b>Efficiency:</b> ${s.efficiency.toFixed(2)}%</div>
+    `;
+}
+
 // -------------------------
 // Settings
 // -------------------------
@@ -633,16 +732,17 @@ function saveSettings() {
 // Save/load system (MULTI SAVE)
 // -------------------------
 
-function getCurrentSessionData() {
-    let elapsed = isRunning ? performance.now() - startTime : pausedTime;
-
+function getCurrentSessionData(completedActionSlots) {
     return {
         timestamp: Date.now(),
-        elapsed: elapsed,
+        completedActionSlots,
+        ticksPerAction,
+        tickOffset,
         normalPP,
         camoPP,
         fastboiPP,
-        failedPP
+        failedPP,
+        currentNPC
     };
 }
 
@@ -688,18 +788,26 @@ function loadState() {
 function loadSessionIntoTracker(s) {
     stopTimer();
 
-    normalPP = s.normalPP;
-    camoPP = s.camoPP;
+    normalPP  = s.normalPP;
+    camoPP    = s.camoPP;
     fastboiPP = s.fastboiPP;
-    failedPP = s.failedPP;
+    failedPP  = s.failedPP;
 
-    pausedTime = s.elapsed;
+    currentNPC = s.currentNPC || "default";
+
+    // ✅ RESTORE TICK CORRECTION
+    tickOffset = s.tickOffset || 0;
+    document.getElementById("tickOffsetInput").value = tickOffset;
+
+    // ✅ RECONSTRUCT TIME FROM ACTION SLOTS
+    const ticksPerAction = s.ticksPerAction ?? (setting_stickyFingers ? 2 : 3);
+    const restoredTicks = s.completedActionSlots * ticksPerAction;
+
+    pausedTime = restoredTicks * 600;
     startTime = performance.now() - pausedTime;
 
     updateTimerDisplay(pausedTime);
     updateDisplay();
-
-    console.log("Session loaded:", s);
 }
 
 function clearSave() {

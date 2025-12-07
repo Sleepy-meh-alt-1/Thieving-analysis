@@ -194,13 +194,16 @@
     <!-- EFFICIENCY -->
     <div id="Efficiency">
       <h3 style="margin:0 0 10px; color:#ffd98a;">
-        <img src="https://runescape.wiki/images/Enhanced_Efficient.png?e1c45" alt="Chest" width="26" style="image-rendering:pixelated;">
+        <img src="https://runescape.wiki/images/Enhanced_Efficient.png?e1c45" width="26" style="image-rendering:pixelated;">
         Efficiency
       </h3>
 
       <div style="flex:1; min-width:140px;">
         <div style="display:flex; justify-content:center; align-items:center;">
           <div id="efficiencyPercent" style="font-weight:800; color:#fff3c0;">0.00%</div>
+          <div id="missedActionsText" style="font-weight:800; color:#fff3c0;">
+             (lost 0 PP)
+          </div>
           </div>
 
           <div id="chestBar" style="height:8px; background:#1b1710; border:1px solid #443c2a; margin-top:8px; border-radius:6px; overflow:hidden;">
@@ -316,18 +319,26 @@
 
     <div style="display:flex; align-items:center; gap:10px; font-size:15px;">
       <input type="checkbox" id="autoStartCheckbox" style="transform:scale(1.3); cursor:pointer;">
-      <label for="autoStartCheckbox" style="cursor:pointer; color:#ffebc8;">
+      <label for="autoStartCheckbox" style="color:#ffebc8;">
         Auto start tracking
       </label>
     </div>
 
     <div style="display:flex; align-items:center; gap:10px; font-size:15px;">
       <input type="checkbox" checked=True id="stickyFingersCheckbox" style="transform:scale(1.3); cursor:pointer;">
-      <label for="stickyFingersCheckbox" style="cursor:pointer; color:#ffebc8;">
+      <label for="stickyFingersCheckbox" style="color:#ffebc8;">
         Sticky fingers relic
       </label>
     </div>
+    
+    <div class="tickAdjust" style="display:flex; align-items:center; gap:10px; font-size:15px;">
+    <label style="color:#ffebc8;">
+      Tick correction:
+      <input type="number" id="tickOffsetInput" value="0" step="1">
+    </label>
   </div>
+  </div>
+
    
   </body>
   <script src="scripts/script.js"></script>
