@@ -1,54 +1,118 @@
+/* =========================================================
+   PP TRACKER
+   ========================================================= */
+
 A1lib.identifyApp("appconfig.json");
 
-// -------------------------
-// Variables
-// -------------------------
-
-// Alt1 stuff
-let reader = new Chatbox.default();
-const appColor = A1lib.mixColor(255, 199, 0);
-const timestampRegex = /\[\d{2}:\d{2}:\d{2}\]/g;
-let chatInterval = null;
-
-// Timer
-let isRunning = false;
-let startTime = 0;
-let pausedTime = 0;
-let timerInterval = null;
-let displayInterval = null;
-let lastRenderedTick = -1;
-let tickOffset = 0;
-let lastCompletedActionSlot = 0;
+const INVENTORY_ICON = {
+  width: 9,
+data: "HzuF/x87hf84QoT/OEKE/xgkN/8YJDf/HzuF/yQ9a/8kPWv/HzuF/yQ9a/8kPWv/JD1r/yQ9a/8YJDf/FSdN/x87hf8VJ03/BREi/yQ9a/8fO4X/JD1r/yQ9a/8VJ03/FSdN/yQ9a/8NFlH/FhQb/wIEDf8VJ03/JD1r/xUnTf8VJ03/FhQb/yQ9a/9Tfaj/JD1r/yQ9a/8FDxP/BREi/xgkN/8NFlH/FhQb/x5oiv9zvdj/GCQ3/x87hf8fO4X/FSdN/xgkN/8CBA3/GCQ3/zF1o/8VJXH/GCQ3/xUnTf8kPWv/JD1r/x87hf8kPWv/FSdN/x5oiv8NFlH/GCQ3/xUnTf8VJ03/FSdN/yQ9a/8kPWv/AgQN/yZgcv80i6n/GCQ3/xgkN/8VJ03/FSdN/xUnTf8VJ03/FSVx/yQ9a/80i6n/BiQl/xgkN/8VJ03/HzuF/zhChP87VKn/O1Sp/w0WUf8FESL/"}
 
 
-// Counters
-let normalPP = 0;
-let fastboiPP = 0;
-let camoPP = 0;
-let failedPP = 0;
-
-// Save snapshot storage
-let saveSnapshot = null;
-
-// Save key
-const SAVE_KEY = "ppTrackerSave";
-
-// Settings
-let setting_autoStart = false;
-let setting_stickyFingers = true;
-
-let ticksPerAction = setting_stickyFingers ? 2 : 3;
-
-
-// icons
-let currentNPC = "";
+let currentNPC = "menaphos market guard";
 const npcData = {
     "menaphos market guard": {
         icon: "https://runescape.wiki/images/Menaphos_market_guard_icon.png?bcb77",
-        drops: [
-            { key: "Sealed clue scroll (elite)", label: "Sealed clue scroll (elite)", icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28elite%29.png?82229", rate: 500 / 100000 },
-            { key: "Sealed clue scroll (hard)", label: "Sealed clue scroll (hard)", icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28hard%29.png?64dd1", rate: 6 / 1000 },
+        drops:[
+{
+    key: "acadia_wood_spirit",
+    label: "Acadia wood spirit",
+    icon: "https://runescape.wiki/images/Acadia_wood_spirit.png?e50f3",
+    rate: 50 / 1000,
+    width: 3,
+    data: "f3V1/31ycv96cHD/fnJy/31ycv96cHD/QEda/0BJXf9ASV3/"
+},
+{
+    key: "coins",
+    label: "Coins",
+    icon: "https://runescape.wiki/images/Coins_250.png?ddfd5",
+    rate: 758 / 1000,
+    width: 3,
+    data: "EHGP/xCr2f8Qos3/EHGP/xCu3f8QpNH/EHCO/xCx4P8Qp9T/"
+},
+{
+    key: "extra_fine_sand",
+    label: "Extra fine sand",
+    icon: "https://runescape.wiki/images/Extra_fine_sand.png?65005",
+    rate: 100 / 1000,
+    width: 3,
+    data: "WpGw/12VtP8XR2v/Roit/0uSuv9Om8T/R46z/02Wvv9Om8T/"
+},
+{
+    key: "large_bladed_adamant_salvage",
+    label: "Large bladed adamant salvage",
+    icon: "https://runescape.wiki/images/Large_bladed_adamant_salvage.png?aee03",
+    rate: 20 / 1000,
+    width: 3,
+    data: "RlRA/zxHN/88Rzf/OkY1/0ZUQP88Rzf/OkY1/32Zdf9LXEb/"
+},
+{
+    key: "menaphite_gift_offering_medium",
+    label: "Menaphite gift offering (medium)",
+    icon: "https://runescape.wiki/images/Menaphite_gift_offering_%28medium%29.png?1ab8d",
+    rate: 2 / 1000,
+    width: 3,
+    data: "ToWa/1GLof9UWV3/VFld/1SQp/8XMDf/VFld/06mxf9Ci6b/"
+},
+{
+    key: "menaphite_gift_offering_small",
+    label: "Menaphite gift offering (small)",
+    icon: "https://runescape.wiki/images/Menaphite_gift_offering_%28small%29.png?0d4e8",
+    rate: 4 / 1000,
+    width: 3,
+    data: "VFld/1RZXf8cS1z/VFld/1RZXf9UWV3/QLDW/0Cw1v9AsNb/"
+},
+{
+    key: "potato_cactus",
+    label: "Potato cactus",
+    icon: "https://runescape.wiki/images/Potato_cactus.png?673c8",
+    rate: 5 / 1000,
+    width: 3,
+    data: "MF5U/ypUS/8qVEv/EC0q/ydJQv8nTUT/FzUw/yRARP8kRDz/"
+},
+{
+    key: "sealed_clue_scroll_elite",
+    label: "Sealed clue scroll (elite)",
+    icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28elite%29.png?82229",
+    rate: 495 / 100000,
+    width: 3,
+    data: "QFBl/1Fng/9Cztz/Pk1h/3aVvP9ykLX/UWeC/3WUu/9wjbL/"
+},
+{
+    key: "sealed_clue_scroll_hard",
+    label: "Sealed clue scroll (hard)",
+    icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28hard%29.png?64dd1",
+    rate: 6 / 1000,
+    width: 3,
+    data: "QFBl/1Fng//MzdT/Pk1h/3aVvP9ykLX/UWeC/3WUu/9wjbL/"
+},
+{
+    key: "sealed_clue_scroll_master",
+    label: "Sealed clue scroll (master)",
+    icon: "https://runescape.wiki/images/Sealed_clue_scroll_%28master%29.png?f1baf",
+    rate: 5 / 100000,
+    width: 3,
+    data: "QFBl/1Fng//OqlP/Pk1h/3aVvP9ykLX/UWeC/3WUu/9wjbL/"
+},
+{
+    key: "vital_spark",
+    label: "Vital spark",
+    icon: "https://runescape.wiki/images/Vital_spark.png?a594c",
+    rate: 2 / 1000,
+    width: 3,
+    data: "UFAn/42NR//ExGr/mJhQ/93dcv/n523/1tZv/9/fcf+QkUT/"
+},
+{
+    key: "waterskin_4",
+    label: "Waterskin (4)",
+    icon: "https://runescape.wiki/images/Waterskin_%284%29.png?77565",
+    rate: 50 / 1000,
+    width: 3,
+    data: "Mj5C/yQtMP8QEBD/NUBE/ycwMv8QFxf/NUBE/yoyNf8XHCD/"
+}
+
         ]
+
     },
 
     "archaeology professor": {
@@ -74,747 +138,817 @@ const npcData = {
     }
 };
 
+// Alt1 setup
+const reader = new Chatbox.default();
+const appColor = A1lib.mixColor(255, 199, 0);
+const timestampRegex = /\[\d{2}:\d{2}:\d{2}\]/g;
 
-// -------------------------
-// UI Buttons
-// -------------------------
+// Save keys
+const STORAGE_KEY = "ppTracker:state:v1";
+const SESSIONS_KEY = "ppTracker:sessions:v1";
 
-document.getElementById("startBtn").addEventListener("click", startTimer);
-document.getElementById("stopBtn").addEventListener("click", stopTimer);
-document.getElementById("resetBtn").addEventListener("click", resetTimer);
-document.getElementById("saveBtn").addEventListener("click", () => {
-    if (!isRunning) return;
+const TICK_MS = 600;
 
-    const ticksPerAction = setting_stickyFingers ? 2 : 3;
+// ===============================
+// Small utilities
+// ===============================
+function $(id) { return document.getElementById(id); }
 
-    const waitForNextAction = () => {
-        const elapsed = performance.now() - startTime;
-        const rawTicks = Math.floor(elapsed / 600);
-        const completedTicks = Math.max(0, rawTicks + tickOffset);
-        const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
 
-        if (
-            !saveSnapshot ||
-            completedActionSlots > saveSnapshot.completedActionSlots
-        ) {
-            saveSnapshot = buildSnapshot(completedActionSlots);
-            buildSavePreview(saveSnapshot);
-            document.getElementById("confirmSavePopup").style.display = "block";
-        } else {
-            requestAnimationFrame(waitForNextAction);
-        }
-    };
+function deepMerge(target, src) {
+  if (!src || typeof src !== "object") return target;
+  for (const k of Object.keys(src)) {
+    const sv = src[k];
+    const tv = target[k];
+    if (Array.isArray(sv)) target[k] = sv.slice();
+    else if (sv && typeof sv === "object" && tv && typeof tv === "object" && !Array.isArray(tv)) {
+      target[k] = deepMerge({ ...tv }, sv);
+    } else target[k] = sv;
+  }
+  return target;
+}
 
-    // mark current state so we know when next action happens
-    const elapsed = performance.now() - startTime;
-    const rawTicks = Math.floor(elapsed / 600);
-    const completedTicks = Math.max(0, rawTicks + tickOffset);
-    saveSnapshot = {
-        completedActionSlots: Math.floor(completedTicks / ticksPerAction)
-    };
+function safeParseInt(v, fallback = 0) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
 
-    waitForNextAction();
-});
+// ===============================
+// State 
+// ===============================
+function defaultState() {
+  return {
+    // timer
+    isRunning: false,
+    startTime: 0, 
+    pausedTime: 0,       
+    lastRenderedTick: -1,
+    tickOffset: 0,
 
-document.getElementById("confirmSaveYes").addEventListener("click", () => {
-    if (!saveSnapshot) return;
+    // settings
+    settings: {
+      autoStart: false,
+      stickyFingers: true,
+    },
 
-    saveState(saveSnapshot);
-    saveSnapshot = null;
+    // counters
+    counters: {
+      normalPP: 0,
+      fastboiPP: 0,
+      camoPP: 0,
+      failedPP: 0,
+    },
 
-    document.getElementById("confirmSavePopup").style.display = "none";
-    loadState();
-});
+    // streaks
+    ppStreak: 0,
+    streaks: [],
 
-document.getElementById("confirmSaveNo").addEventListener("click", () => {
-    saveSnapshot = null;
-    document.getElementById("confirmSavePopup").style.display = "none";
-});
+    // session context
+    currentNPC: "menaphos market guard",
 
-document.getElementById("openSessionPopup").addEventListener("click", () => {
-    buildSessionList();
-    document.getElementById("sessionPopup").style.display = "flex";
-});
+    buffs: {
+      playerLevel: 99,
+      targetLevel: 1,
 
-document.getElementById("closeSessionPopup").addEventListener("click", () => {
-    document.getElementById("sessionPopup").style.display = "none";
-});
+      oblivious: false,
 
+      auraEnabled: false,
+      auraTier: 0,
 
-document.getElementById("tickOffsetInput").addEventListener("input", e => {
-    tickOffset = Number(e.target.value) || 0;
+      crystalMask: false,
+      crystalMaskLightForm: false,
+      weekend: false,
+      soulDistractor: false,
+      exoHands: false,
+      ardyCloak: false,
+      viturRing: false,
+      magpie: false,
+    },
+  };
+}
+
+let state = defaultState();
+
+let saveTimer = null;
+function requestSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveStateToLocalStorage, 250);
+}
+
+function saveStateToLocalStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn("Save failed:", e);
+  }
+}
+
+function loadStateFromLocalStorage() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    state = deepMerge(defaultState(), parsed);
+
+    state.isRunning = false;
+    state.startTime = 0;
+  } catch (e) {
+    console.warn("Load failed:", e);
+  }
+}
+
+// ===============================
+// UI <-> State sync
+// ===============================
+function applyStateToUI() {
+  if ($("autoStartCheckbox")) $("autoStartCheckbox").checked = !!state.settings.autoStart;
+  if ($("stickyFingersCheckbox")) $("stickyFingersCheckbox").checked = !!state.settings.stickyFingers;
+
+  if ($("tickOffsetInput")) $("tickOffsetInput").value = String(state.tickOffset || 0);
+
+  if ($("playerThievingLevel")) $("playerThievingLevel").value = String(state.buffs.playerLevel ?? 99);
+  if ($("targetThievingLevel")) $("targetThievingLevel").value = String(state.buffs.targetLevel ?? 1);
+
+  if ($("buffOblivious")) $("buffOblivious").checked = !!state.buffs.oblivious;
+
+  if ($("buffAuraEnabled")) $("buffAuraEnabled").checked = !!state.buffs.auraEnabled;
+  if ($("buffAuraTier")) $("buffAuraTier").value = String(state.buffs.auraTier ?? 0);
+
+  if ($("buffCrystalMask")) $("buffCrystalMask").checked = !!state.buffs.crystalMask;
+  if ($("buffCrystalMaskLightForm")) $("buffCrystalMaskLightForm").checked = !!state.buffs.crystalMaskLightForm;
+  if ($("buffWeekend")) $("buffWeekend").checked = !!state.buffs.weekend;
+  if ($("buffSoulDistractor")) $("buffSoulDistractor").checked = !!state.buffs.soulDistractor;
+  if ($("buffExoHands")) $("buffExoHands").checked = !!state.buffs.exoHands;
+  if ($("buffArdyCloak")) $("buffArdyCloak").checked = !!state.buffs.ardyCloak;
+  if ($("buffViturRing")) $("buffViturRing").checked = !!state.buffs.viturRing;
+  if ($("buffMagpie")) $("buffMagpie").checked = !!state.buffs.magpie;
+
+  updateNpcIcons(state.currentNPC);
+}
+
+function readUIIntoState() {
+  // settings
+  state.settings.autoStart = !!$("autoStartCheckbox")?.checked;
+  state.settings.stickyFingers = !!$("stickyFingersCheckbox")?.checked;
+
+  // tick offset
+  state.tickOffset = safeParseInt($("tickOffsetInput")?.value, 0);
+
+  // buffs/levels
+  state.buffs.playerLevel = safeParseInt($("playerThievingLevel")?.value, 99);
+  state.buffs.targetLevel = safeParseInt($("targetThievingLevel")?.value, 1);
+
+  state.buffs.oblivious = !!$("buffOblivious")?.checked;
+
+  state.buffs.auraEnabled = !!$("buffAuraEnabled")?.checked;
+  state.buffs.auraTier = safeParseInt($("buffAuraTier")?.value, 0);
+
+  state.buffs.crystalMask = !!$("buffCrystalMask")?.checked;
+  state.buffs.crystalMaskLightForm = !!$("buffCrystalMaskLightForm")?.checked;
+  state.buffs.weekend = !!$("buffWeekend")?.checked;
+  state.buffs.soulDistractor = !!$("buffSoulDistractor")?.checked;
+  state.buffs.exoHands = !!$("buffExoHands")?.checked;
+  state.buffs.ardyCloak = !!$("buffArdyCloak")?.checked;
+  state.buffs.viturRing = !!$("buffViturRing")?.checked;
+  state.buffs.magpie = !!$("buffMagpie")?.checked;
+}
+
+// crystal mask exclusivity
+function enforceCrystalMaskExclusive() {
+  const cm = $("buffCrystalMask");
+  const lf = $("buffCrystalMaskLightForm");
+  if (!cm || !lf) return;
+
+  cm.addEventListener("change", () => {
+    if (cm.checked) lf.checked = false;
+    readUIIntoState();
+    requestSave();
+    updateTotalBuffUI();
+    updateSuccessChanceUI();
+  });
+
+  lf.addEventListener("change", () => {
+    if (lf.checked) cm.checked = false;
+    readUIIntoState();
+    requestSave();
+    updateTotalBuffUI();
+    updateSuccessChanceUI();
+  });
+}
+
+function wireUIAutosave() {
+  const ids = [
+    "autoStartCheckbox", "stickyFingersCheckbox",
+    "tickOffsetInput",
+    "playerThievingLevel", "targetThievingLevel",
+    "buffOblivious",
+    "buffCrystalMask", "buffCrystalMaskLightForm",
+    "buffWeekend", "buffSoulDistractor", "buffExoHands",
+    "buffArdyCloak", "buffViturRing", "buffMagpie",
+    "buffAuraEnabled", "buffAuraTier",
+  ];
+
+  const handler = () => {
+    readUIIntoState();
+    requestSave();
+    updateTotalBuffUI();
+    updateSuccessChanceUI();
     updateDisplay();
+  };
+
+  ids.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", handler);
+    el.addEventListener("input", handler);
+  });
+
+  enforceCrystalMaskExclusive();
+}
+
+// ===============================
+// Derived getters
+// ===============================
+function getTicksPerAction() {
+  return state.settings.stickyFingers ? 2 : 3;
+}
+
+function getTotalBuff() {
+  const auraValue = state.buffs.auraEnabled ? (state.buffs.auraTier || 0) : 0;
+
+  return (
+    (state.buffs.crystalMask ? 15 : 0) +
+    (state.buffs.crystalMaskLightForm ? 30 : 0) +
+    (state.buffs.weekend ? 20 : 0) +
+    (state.buffs.soulDistractor ? 2 : 0) +
+    (state.buffs.exoHands ? 5 : 0) +
+    (state.buffs.ardyCloak ? 10 : 0) +
+    (state.buffs.viturRing ? 5 : 0) +
+    (state.buffs.magpie ? 3 : 0) +
+    auraValue
+  );
+}
+
+// ===============================
+// Buttons
+// ===============================
+let timerInterval = null;
+
+$("startBtn")?.addEventListener("click", startTimer);
+$("stopBtn")?.addEventListener("click", stopTimer);
+$("resetBtn")?.addEventListener("click", resetTimer);
+
+$("openSessionPopup")?.addEventListener("click", () => {
+  buildSessionList();
+  $("sessionPopup").style.display = "flex";
+});
+$("closeSessionPopup")?.addEventListener("click", () => {
+  $("sessionPopup").style.display = "none";
 });
 
-// -------------------------
-// Alt1 chatbox setup
-// -------------------------
+$("saveBtn")?.addEventListener("click", () => {
+  if (!state.isRunning) return;
 
-window.setTimeout(() => {
-    reader.readargs = {
-        colors: [
-            A1lib.mixColor(255, 255, 255),
-            A1lib.mixColor(0, 255, 0),
-            A1lib.mixColor(30, 255, 0),
-            A1lib.mixColor(30, 255, 0)
-        ],
-        backwards: true,
-    };
+  const ticksPerAction = getTicksPerAction();
+  const elapsed = performance.now() - state.startTime;
+  const rawTicks = Math.floor(elapsed / TICK_MS);
+  const completedTicks = Math.max(0, rawTicks + (state.tickOffset || 0));
+  const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
 
-    $(".nis").append("<span>Searching for chatboxes</span>");
-    $(".nis").append("<div>If this is showing long, chatbox reading might not work.</div>");
-    reader.find();
+  const snap = {
+    timestamp: Date.now(),
+    completedActionSlots,
+    ticksPerAction,
+    state: JSON.parse(JSON.stringify(state)),
+  };
 
-    const findChat = setInterval(() => {
-        if (reader.pos === null) reader.find();
-        else {
-            $(".nis span:contains('Searching for chatboxes')").remove();
-            $(".nis div:contains('chatbox reading might not work')").remove();
-            clearInterval(findChat);
-            reader.pos.mainbox = reader.pos.boxes[0];
-            showSelectedChat(reader.pos);
+  saveSessionSnapshot(snap);
+  buildSessionList();
+});
 
-            chatInterval = setInterval(() => {
-                readChatbox();
-            }, 200);
-        }
-    }, 1000);
-}, 0);
-
-function showSelectedChat(chat) {
-    try {
-        alt1.overLayRect(
-            appColor,
-            chat.mainbox.rect.x,
-            chat.mainbox.rect.y,
-            chat.mainbox.rect.width,
-            chat.mainbox.rect.height,
-            2000,
-            5
-        );
-    } catch {}
+function saveSessionSnapshot(snapshot) {
+  const arr = JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]");
+  arr.push(snapshot);
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr));
 }
 
-// -------------------------
-// Chatbox parsing
-// -------------------------
-
-function readChatbox() {
-    const opts = reader.read() || [];
-    let chatStr = "";
-    let chatArr;
-
-    if (opts.length) {
-        for (let line in opts) {
-            if (!opts[line].text.match(timestampRegex) && line == "0") continue;
-            if (opts[line].text.match(timestampRegex)) {
-                if (line > 0) chatStr += "\n";
-                chatStr += opts[line].text + " ";
-                continue;
-            }
-            chatStr += opts[line].text;
-        }
-    }
-
-    if (chatStr.trim()) chatArr = chatStr.trim().split("\n");
-
-    if (chatArr) {
-        for (let line of chatArr) {
-            const chatLine = line.trim();
-            if (chatLine && !isInHistory(chatLine)) {
-                checkLine(chatLine);
-            }
-        }
-        updateChatHistory(chatArr);
-    }
+function deleteSession(index) {
+  const arr = JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]");
+  arr.splice(index, 1);
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr));
 }
 
-function isInHistory(chatLine) {
-    if (!sessionStorage.chatHistory) return false;
-    return sessionStorage.chatHistory.split("\n").includes(chatLine);
+function loadSession(index) {
+  const arr = JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]");
+  const snap = arr[index];
+  if (!snap) return;
+
+  stopTimer();
+
+  state = deepMerge(defaultState(), snap.state || {});
+  state.isRunning = false;
+  state.startTime = 0;
+
+  const ticksPerAction = snap.ticksPerAction ?? getTicksPerAction();
+  const restoredTicks = (snap.completedActionSlots || 0) * ticksPerAction;
+  state.pausedTime = restoredTicks * TICK_MS;
+
+  applyStateToUI();
+  requestSave();
+
+  updateTimerDisplay(state.pausedTime);
+  updateDisplay();
+  updateTotalBuffUI();
+  updateSuccessChanceUI();
+  renderHistogram(state.streaks);
 }
 
-function updateChatHistory(chatArr) {
-    if (!sessionStorage.chatHistory) {
-        sessionStorage.chatHistory = chatArr.join("\n");
-        return;
-    }
-    let history = sessionStorage.chatHistory.split("\n");
-    while (history.length > 100) history.shift();
-    chatArr.forEach(line => history.push(line.trim()));
-    sessionStorage.chatHistory = history.join("\n");
+function buildSessionList() {
+  const list = $("sessionList");
+  if (!list) return;
+
+  const arr = JSON.parse(localStorage.getItem(SESSIONS_KEY) || "[]");
+  list.innerHTML = "";
+
+  if (!arr.length) {
+    list.innerHTML = "<i>No saved sessions.</i>";
+    return;
+  }
+
+  arr.forEach((s, i) => {
+    const date = new Date(s.timestamp).toLocaleString();
+    const c = s.state?.counters || {};
+    const totalPP = (c.normalPP || 0) + (c.fastboiPP || 0) + (c.camoPP || 0);
+
+    const div = document.createElement("div");
+    div.style.marginBottom = "10px";
+    div.style.padding = "8px";
+    div.style.borderBottom = "1px solid #555";
+
+    div.innerHTML = `
+      <b>Session ${i + 1}</b> <span style="opacity:0.7;">(${date})</span><br>
+      Total PP: ${totalPP}<br>
+      Action slots: ${s.completedActionSlots ?? 0}<br>
+      <button class="loadBtn" data-index="${i}"
+        style="margin-top:5px; margin-right:6px; background:#4CAF50; color:white; padding:4px 8px; border:0; border-radius:4px;">
+        Load
+      </button>
+      <button class="deleteBtn" data-index="${i}"
+        style="background:#b33131; color:white; padding:4px 8px; border:0; border-radius:4px;">
+        Delete
+      </button>
+    `;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll(".loadBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      loadSession(Number(btn.dataset.index));
+      $("sessionPopup").style.display = "none";
+    });
+  });
+
+  list.querySelectorAll(".deleteBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      deleteSession(Number(btn.dataset.index));
+      buildSessionList();
+    });
+  });
 }
 
-// -------------------------
+// ===============================
 // Timer logic
-// -------------------------
-
+// ===============================
 function startTimer() {
-    if (isRunning) return;
-    isRunning = true;
+  if (state.isRunning) return;
+  state.isRunning = true;
 
-    startTime = performance.now() - pausedTime;
+  state.startTime = performance.now() - (state.pausedTime || 0);
 
-    timerInterval = setInterval(() => {
-        updateTimerDisplay(performance.now() - startTime);
-    }, 50);
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    updateTimerDisplay(performance.now() - state.startTime);
+  }, 50);
 
-    requestAnimationFrame(tickLoop);
+  requestSave();
+  requestAnimationFrame(tickLoop);
 }
-
-function tickLoop() {
-    if (!isRunning) return;
-
-    const elapsed = performance.now() - startTime;
-    const completedTicks = Math.floor(elapsed / 600);
-
-    if (completedTicks !== lastRenderedTick) {
-        lastRenderedTick = completedTicks;
-        updateDisplay();
-    }
-
-    requestAnimationFrame(tickLoop);
-}
-
-
 
 function stopTimer() {
-    if (!isRunning) return;
+  if (!state.isRunning) return;
 
-    isRunning = false;
+  state.isRunning = false;
 
-    clearInterval(timerInterval);
-    timerInterval = null;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
 
-    let rawElapsed = performance.now() - startTime;
-    let wait = 0 // msUntilNextTick(rawElapsed);
-    pausedTime = rawElapsed + wait;
+  state.pausedTime = performance.now() - state.startTime;
 
-    updateTimerDisplay(pausedTime);
-    updateDisplay();
-
-    if (displayInterval) {
-        clearTimeout(displayInterval);
-        displayInterval = null;
-    }
+  updateTimerDisplay(state.pausedTime);
+  updateDisplay();
+  requestSave();
 }
 
 function resetTimer() {
-    if (timerInterval) clearInterval(timerInterval);
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
 
-    isRunning = false;
-    startTime = 0;
-    pausedTime = 0;
+  state = deepMerge(defaultState(), {
+    settings: state.settings, // keep settings on reset
+    buffs: state.buffs,       // keep buffs/levels on reset
+  });
 
-    normalPP = 0;
-    fastboiPP = 0;
-    camoPP = 0;
-    failedPP = 0;
-    document.getElementById("tickOffsetInput").value = 0
-    tickOffset = 0
-    currentNPC = "default"
+  applyStateToUI();
+  requestSave();
 
-    updateTimerDisplay(0);
+  updateTimerDisplay(0);
+  updateDisplay();
+  updateTotalBuffUI();
+  updateSuccessChanceUI();
+  renderHistogram(state.streaks);
+}
+
+function tickLoop() {
+  if (!state.isRunning) return;
+
+  const elapsed = performance.now() - state.startTime;
+  const completedTicks = Math.floor(elapsed / TICK_MS);
+
+  if (completedTicks !== state.lastRenderedTick) {
+    state.lastRenderedTick = completedTicks;
     updateDisplay();
-
-    if (displayInterval) {
-        clearInterval(displayInterval);
-        displayInterval = null;
-    }
+  }
+  requestAnimationFrame(tickLoop);
 }
 
-// -------------------------
+function updateTimerDisplay(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const milliseconds = Math.round(ms % 1000);
+
+  const formatted =
+    String(hours).padStart(2, "0") + ":" +
+    String(minutes).padStart(2, "0") + ":" +
+    String(seconds).padStart(2, "0") + "." +
+    String(milliseconds).padStart(3, "0");
+
+  if ($("timer")) $("timer").textContent = formatted;
+}
+
+// ===============================
+// Alt1 chatbox setup + parsing
+// ===============================
+function showSelectedChat(chat) {
+  try {
+    alt1.overLayRect(appColor, chat.mainbox.rect.x, chat.mainbox.rect.y,
+      chat.mainbox.rect.width, chat.mainbox.rect.height, 2000, 5);
+  } catch {}
+}
+
+window.setTimeout(() => {
+  reader.readargs = {
+    colors: [
+      A1lib.mixColor(255, 255, 255),
+      A1lib.mixColor(0, 255, 0),
+      A1lib.mixColor(30, 255, 0),
+      A1lib.mixColor(30, 255, 0),
+    ],
+    backwards: true,
+  };
+
+  reader.find();
+
+  const findChat = setInterval(() => {
+    if (reader.pos === null) reader.find();
+    else {
+      clearInterval(findChat);
+      reader.pos.mainbox = reader.pos.boxes[0];
+      showSelectedChat(reader.pos);
+
+      setInterval(readChatbox, 200);
+    }
+  }, 1000);
+}, 0);
+
+function readChatbox() {
+  const opts = reader.read() || [];
+  let chatStr = "";
+
+  if (opts.length) {
+    for (let line in opts) {
+      if (!opts[line].text.match(timestampRegex) && line == "0") continue;
+      if (opts[line].text.match(timestampRegex)) {
+        if (line > 0) chatStr += "\n";
+        chatStr += opts[line].text + " ";
+        continue;
+      }
+      chatStr += opts[line].text;
+    }
+  }
+
+  const chatArr = chatStr.trim() ? chatStr.trim().split("\n") : null;
+  if (!chatArr) return;
+
+  for (const line of chatArr) {
+    const chatLine = line.trim();
+    if (chatLine && !isInHistory(chatLine)) {
+      checkLine(chatLine);
+    }
+  }
+  updateChatHistory(chatArr);
+}
+
+function isInHistory(chatLine) {
+  if (!sessionStorage.chatHistory) return false;
+  return sessionStorage.chatHistory.split("\n").includes(chatLine);
+}
+
+function updateChatHistory(chatArr) {
+  if (!sessionStorage.chatHistory) {
+    sessionStorage.chatHistory = chatArr.join("\n");
+    return;
+  }
+  let history = sessionStorage.chatHistory.split("\n");
+  while (history.length > 100) history.shift();
+  chatArr.forEach(line => history.push(line.trim()));
+  sessionStorage.chatHistory = history.join("\n");
+}
+
+// ===============================
+// Success chance math
+// ===============================
+function calcSuccessChance(attempt, yourLevel, targetLevel, totalBuff, oblivious) {
+  const base = 75;
+  const levelBonus = Math.max(0, yourLevel - targetLevel);
+  const highReqBonus = targetLevel >= 100 ? 15 : 0;
+
+  const freshWindow = 10 + (oblivious ? 5 : 0);
+  const freshBonus = attempt <= freshWindow ? 10 : 0;
+  const decay = attempt > freshWindow ? (attempt - freshWindow) : 0;
+
+  const raw = base + levelBonus + highReqBonus + totalBuff + freshBonus - decay;
+  return clamp(raw, 0, 100);
+}
+
+function getBreakdown(attempt, yourLevel, targetLevel, totalBuff, oblivious) {
+  const base = 75;
+  const levelBonus = Math.max(0, yourLevel - targetLevel);
+  const highReqBonus = targetLevel >= 100 ? 15 : 0;
+
+  const freshWindow = 10 + (oblivious ? 5 : 0);
+  const freshBonus = attempt <= freshWindow ? 10 : 0;
+  const decay = attempt > freshWindow ? (attempt - freshWindow) : 0;
+
+  const raw = base + levelBonus + highReqBonus + totalBuff + freshBonus - decay;
+  const final = clamp(raw, 0, 100);
+
+  return { attempt, base, levelBonus, highReqBonus, totalBuff, freshWindow, freshBonus, decay, raw, final };
+}
+
+// Mean chance across rolls 1..N (descriptive only)
+function calcMeanChance(attemptN, yourLevel, targetLevel, totalBuff, oblivious) {
+  if (attemptN <= 0) return 0;
+  let sum = 0;
+  for (let a = 1; a <= attemptN; a++) sum += calcSuccessChance(a, yourLevel, targetLevel, totalBuff, oblivious);
+  return sum / attemptN;
+}
+
+// Survival chance to succeed ALL rolls 1..N (multiplicative)
+function calcSurvivalChance(attemptN, yourLevel, targetLevel, totalBuff, oblivious) {
+  if (attemptN <= 0) return 0;
+  let prob = 1;
+  for (let a = 1; a <= attemptN; a++) {
+    prob *= (calcSuccessChance(a, yourLevel, targetLevel, totalBuff, oblivious) / 100);
+  }
+  return prob * 100;
+}
+
+function updateTotalBuffUI() {
+  const total = getTotalBuff();
+  if ($("totalBuffValue")) $("totalBuffValue").textContent = String(total);
+}
+
+function updateSuccessChanceUI() {
+  const yourLevel = state.buffs.playerLevel;
+  const targetLevel = state.buffs.targetLevel;
+  const totalBuff = getTotalBuff();
+  const oblivious = !!state.buffs.oblivious;
+
+  const attempt = (state.ppStreak || 0) + 1;
+
+  const b = getBreakdown(attempt, yourLevel, targetLevel, totalBuff, oblivious);
+
+  // mean chance so far:
+  // const topValue = calcMeanChance(attempt, yourLevel, targetLevel, totalBuff, oblivious);
+
+  // survival chance to succeed ALL so far:
+  const topValue = calcSurvivalChance(attempt, yourLevel, targetLevel, totalBuff, oblivious);
+
+  const top = $("ppChanceFinal");
+  const box = $("ppChanceBreakdown");
+  if (!top || !box) return;
+
+  top.textContent = `${topValue.toFixed(2)}%`;
+
+  box.innerHTML = `
+    <div>Attempt: ${b.attempt}</div>
+    <div>Base: ${b.base}%</div>
+    <div>Level bonus: +${b.levelBonus}%</div>
+    <div>High requirement bonus (target ≥ 100): +${b.highReqBonus}%</div>
+    <div>Buffs total: +${b.totalBuff}%</div>
+    <div>Fresh bonus: +${b.freshBonus}% (window: ${b.freshWindow})</div>
+    <div>Decay: -${b.decay}%</div>
+    <hr style="border-color:#443c2a; margin:6px 0;">
+    <div><b>Raw:</b> ${b.raw.toFixed(2)}%</div>
+    <div><b>Final:</b> ${b.final.toFixed(2)}%</div>
+  `;
+}
+
+// ===============================
 // Chat line interpretation
-// -------------------------
-
+// ===============================
 function checkLine(line) {
-    if (isRunning) {
-        // TODO: Add triple/quad loot procs
-        if (line.includes("Your camouflage outfit keeps you hidden")) camoPP++;
-        if (line.includes("Your lightning-fast reactions")) {
-            fastboiPP++;
-            normalPP++;
-        }
-        if (line.includes("You pick the")) normalPP++;
-        if (line.includes("You fail to pick")) failedPP++;
+  if (!state.isRunning) {
+    if (state.settings.autoStart && line.includes("You pick the")) startTimer();
+    return;
+  }
 
-        let npcMatch = line.match(/You (?:pick|fail to pick) the (.+?)['’]s pocket/);
-        
-        if (npcMatch) {          
-            currentNPC = npcMatch[1].toLowerCase().trim();
-            console.log(currentNPC)
-            updateNpcIcons(currentNPC);
+  // CAMO
+  if (line.includes("Your camouflage outfit keeps you hidden")) {
+    state.counters.camoPP++;
+    requestSave();
+  }
 
-        }
-    } else {
-        if (setting_autoStart && line.includes("You pick the")) {
-            startTimer();
-        }
-    }
+  // FAST
+  if (line.includes("Your lightning-fast reactions")) {
+    state.counters.fastboiPP++;
+    state.counters.normalPP++;
+    requestSave();
+  }
+
+  // SUCCESS
+  if (line.includes("You pick the")) {
+    state.ppStreak++;
+    state.counters.normalPP++;
+    requestSave();
+  }
+
+  // FAIL
+  if (line.includes("You fail to")) {
+    if (state.ppStreak > 0) state.streaks.push(state.ppStreak);
+    state.ppStreak = 0;
+    state.counters.failedPP++;
+    renderHistogram(state.streaks);
+    requestSave();
+  }
+
+  // OPTIONAL: "avoid being hit" ends streak
+  if (line.toLowerCase().includes("you avoid being hit")) {
+    if (state.ppStreak > 0) state.streaks.push(state.ppStreak);
+    state.ppStreak = 0;
+    renderHistogram(state.streaks);
+    requestSave();
+  }
+
+  // oblivious warning marker
+  if (line.includes("not for much longer")) {
+    console.log("PP attempts before Oblivious warning:", state.ppStreak);
+  }
+
+  updateTotalBuffUI();
+  updateSuccessChanceUI();
+  updateDisplay();
 }
 
-
-// -------------------------
-// GUI update
-// -------------------------
+// ===============================
+// Display
+// ===============================
+function updateNpcIcons(npcName) {
+  // requires your npcData constant
+  if (typeof npcData === "undefined") return;
+  const data = npcData[npcName] || npcData["default"];
+  document.querySelectorAll(".npcIcon").forEach(el => { el.src = data.icon; });
+}
 
 function updateDisplay() {
-    // ---- Tick-locked time ----
-    const elapsed = isRunning ? performance.now() - startTime : pausedTime;
-    const rawTicks = Math.floor(elapsed / 600);
-    const completedTicks = Math.max(0, rawTicks + tickOffset);    
-    const ticksPerAction = setting_stickyFingers ? 2 : 3;
-    const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
-    lastCompletedActionSlot = completedActionSlots;
+  const ticksPerAction = getTicksPerAction();
 
+  // tick-locked time
+  const elapsed = state.isRunning ? (performance.now() - state.startTime) : (state.pausedTime || 0);
+  const rawTicks = Math.floor(elapsed / TICK_MS);
+  const completedTicks = Math.max(0, rawTicks + (state.tickOffset || 0));
+  const completedActionSlots = Math.floor(completedTicks / ticksPerAction);
 
-    const elapsedHours = (completedTicks * 600) / 3600000;
+  const normalPP = state.counters.normalPP;
+  const camoPP = state.counters.camoPP;
+  const fastPP = state.counters.fastboiPP;
+  const failedPP = state.counters.failedPP;
 
-    // ---- Counts ----
-    const totalPP = normalPP + camoPP + fastboiPP;
-    const safeNormal = normalPP > 0 ? normalPP : 1;
+  const totalPP = normalPP + camoPP + fastPP;
 
-    // ---- PP/H (action-slot based, perfectly stable) ----
-    const actionsPerHour = 3600000 / (ticksPerAction * 600); // 3000
+  const actionsPerHour = 3600000 / (ticksPerAction * TICK_MS);
+  const normalPPPerHour = completedActionSlots > 0 ? (normalPP / completedActionSlots) * actionsPerHour : 0;
+  const camoPPPerHour = completedActionSlots > 0 ? (camoPP / completedActionSlots) * actionsPerHour : 0;
+  const fastPPPerHour = completedActionSlots > 0 ? (fastPP / completedActionSlots) * actionsPerHour : 0;
+  const totalPPPerHour = completedActionSlots > 0 ? (totalPP / completedActionSlots) * actionsPerHour : 0;
 
-    const normalPPPerHour  = completedActionSlots > 0
-        ? (normalPP / completedActionSlots) * actionsPerHour
-        : 0;
+  const normalMaxPPPerHour = state.settings.stickyFingers ? 3000 : 2000;
+  const safeNormal = normalPP > 0 ? normalPP : 1;
 
-    const camoPPPerHour = completedActionSlots > 0
-        ? (camoPP / completedActionSlots) * actionsPerHour
-        : 0;
+  const camoBonus = (camoPP / safeNormal) * normalMaxPPPerHour;
+  const fastBonus = (fastPP / safeNormal) * normalMaxPPPerHour;
+  const totalPPMax = normalMaxPPPerHour + camoBonus + fastBonus;
 
-    const fastboiPPPerHour = completedActionSlots > 0
-        ? (fastboiPP / completedActionSlots) * actionsPerHour
-        : 0;
+  const normalPPPercent = totalPP > 0 ? ((totalPP - failedPP) / totalPP) * 100 : 100;
+  const camoPPPercent = (camoPP / safeNormal) * 100;
+  const fastPPPercent = (fastPP / safeNormal) * 100;
+  const totalPPPercent = normalPPPercent + camoPPPercent + fastPPPercent;
 
-    const totalPPPerHour = completedActionSlots > 0
-        ? (totalPP / completedActionSlots) * actionsPerHour
-        : 0;
+  const efficiencyPercent = completedActionSlots === 0 ? 100 : (normalPP / completedActionSlots) * 100;
 
-    const normalMaxPPPerHour = setting_stickyFingers ? 3000 : 2000;
+  // Counters
+  if ($("normalCount")) $("normalCount").textContent = String(normalPP);
+  if ($("camoCount")) $("camoCount").textContent = String(camoPP);
+  if ($("fastCount")) $("fastCount").textContent = String(fastPP);
+  if ($("failedCount")) $("failedCount").textContent = String(failedPP);
+  if ($("totalCount")) $("totalCount").textContent = String(totalPP);
 
-    // ---- PROC BONUSES ----
-    const camoPPBonus = (camoPP / safeNormal) * normalMaxPPPerHour;
-    const fastBonus   = (fastboiPP / safeNormal) * normalMaxPPPerHour;
-    const totalPPMax  = normalMaxPPPerHour + camoPPBonus + fastBonus;
+  // pph
+  if ($("pphNormalActual")) $("pphNormalActual").textContent = normalPPPerHour.toFixed(0);
+  if ($("pphNormalMax")) $("pphNormalMax").textContent = normalMaxPPPerHour.toFixed(0);
+  if ($("pphNormalPer")) $("pphNormalPer").textContent = normalPPPercent.toFixed(2);
 
-    // ---- TABLE PERCENTS (PURE RATIOS) ----
-    const normalPPPercent   = totalPP > 0 ? ((totalPP - failedPP) / totalPP) * 100 : 100;
-    const camoPPPercent     = (camoPP / safeNormal) * 100;
-    const fastboiPPPercent  = (fastboiPP / safeNormal) * 100;
-    const totalPPPercent    = normalPPPercent + camoPPPercent + fastboiPPPercent;
+  if ($("pphCamoActual")) $("pphCamoActual").textContent = camoPPPerHour.toFixed(0);
+  if ($("pphCamoMax")) $("pphCamoMax").textContent = camoBonus.toFixed(0);
+  if ($("pphCamoPer")) $("pphCamoPer").textContent = camoPPPercent.toFixed(2);
 
-    // ---- EFFICIENCY (ACTION-BASED, NOT TIME-BASED) ----
-    let efficiencyPercent;
-    if (completedActionSlots === 0) {
-        efficiencyPercent = 100;
-    } else {
-        efficiencyPercent = (normalPP / completedActionSlots) * 100;
-    }
+  if ($("pphAgilityActual")) $("pphAgilityActual").textContent = fastPPPerHour.toFixed(0);
+  if ($("pphAgilityMax")) $("pphAgilityMax").textContent = fastBonus.toFixed(0);
+  if ($("pphAgilityPer")) $("pphAgilityPer").textContent = fastPPPercent.toFixed(2);
 
-    // ---- LOST ACTIONS ----
-    const lostPickpockets = Math.max(0, totalPPMax - totalPPPerHour);
+  if ($("pphTotalActual")) $("pphTotalActual").textContent = totalPPPerHour.toFixed(0);
+  if ($("pphTotalMax")) $("pphTotalMax").textContent = totalPPMax.toFixed(0);
+  if ($("pphTotalPer")) $("pphTotalPer").textContent = totalPPPercent.toFixed(2);
 
-    // ---- NPC DROPS ----
-    const npc = npcData[currentNPC] || npcData["default"];
-    const drops = npc.drops;
+  if ($("efficiencyPercent")) $("efficiencyPercent").textContent = `${efficiencyPercent.toFixed(2)}%`;
+  if ($("efficiencyBar")) $("efficiencyBar").style.width = `${efficiencyPercent}%`;
 
-    const results = drops.map(d => ({
-        label: d.label,
-        icon: d.icon,
-        gained: totalPP * d.rate,
-        hourly: totalPPPerHour * d.rate,
-        lost: lostPickpockets * d.rate
-    }));
+  // streak stats
+  const streaks = state.streaks || [];
+  const min = streaks.length ? Math.min(...streaks) : 0;
+  const max = streaks.length ? Math.max(...streaks) : 0;
+  const avg = streaks.length ? (streaks.reduce((a, b) => a + b, 0) / streaks.length) : 0;
 
-    let html = `
-    <table style="
-        width:100%;
-        border-collapse:collapse;
-        margin-top:6px;
-        font-size:13px;
-    ">
-        <thead>
-            <tr style="border-bottom:1px solid #b18b29;">
-                <th style="text-align:left;">Drop</th>
-                <th style="text-align:left;"></th>
-                <th style="text-align:right;">Gained</th>
-                <th style="text-align:right;">Hourly rate</th>
-                <th style="text-align:right;">Missed/H</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
-
-    if (results.length === 0) {
-        html += `
-            <tr>
-                <td colspan="4" style="opacity:0.75; padding-top:6px;">
-                    No notable tracked drops for this NPC.
-                </td>
-            </tr>
-        `;
-    } else {
-        results.forEach(r => {
-            html += `
-            <tr>
-                <td><img src="${r.icon}" heigth="24"></td>
-                <td style="text-align:left;">${r.label}</td>
-                <td style="text-align:right;">${r.gained.toFixed(2)}</td>
-                <td style="text-align:right;">${r.hourly.toFixed(2)}</td>
-                <td style="text-align:right;">${r.lost.toFixed(2)}</td>
-            </tr>
-            `;
-        });
-    }
-
-    html += `</tbody></table>`;
-
-    document.getElementById("efficienyText").innerHTML = html;
-
-    // ---- GUI UPDATES ----
-    document.getElementById("normalCount").textContent = normalPP;
-    document.getElementById("camoCount").textContent = camoPP;
-    document.getElementById("fastCount").textContent = fastboiPP;
-    document.getElementById("failedCount").textContent = failedPP;
-    document.getElementById("totalCount").textContent  = totalPP;
-
-    document.getElementById("pphNormalActual").textContent = normalPPPerHour.toFixed(0);
-    document.getElementById("pphNormalMax").textContent    = normalMaxPPPerHour.toFixed(0);
-    document.getElementById("pphNormalPer").textContent    = normalPPPercent.toFixed(2);
-
-    document.getElementById("pphCamoActual").textContent   = camoPPPerHour.toFixed(0);
-    document.getElementById("pphCamoMax").textContent      = camoPPBonus.toFixed(0);
-    document.getElementById("pphCamoPer").textContent      = camoPPPercent.toFixed(2);
-
-    document.getElementById("pphAgilityActual").textContent = fastboiPPPerHour.toFixed(0);
-    document.getElementById("pphAgilityMax").textContent    = fastBonus.toFixed(0);
-    document.getElementById("pphAgilityPer").textContent    = fastboiPPPercent.toFixed(2);
-
-    document.getElementById("pphTotalActual").textContent = totalPPPerHour.toFixed(0);
-    document.getElementById("pphTotalMax").textContent    = totalPPMax.toFixed(0);
-    document.getElementById("pphTotalPer").textContent    = totalPPPercent.toFixed(2);
-
-    document.getElementById("efficiencyPercent").textContent =
-        efficiencyPercent.toFixed(2) + "%";
-    document.getElementById("efficiencyBar").style.width =
-        efficiencyPercent + "%";
-
-    const missedActionSlots = completedActionSlots - normalPP;
-
-    if(missedActionSlots == 0){
-            document.getElementById("missedActionsText").textContent = " (Perfect)";
-    } else {
-        if(missedActionSlots > 0){
-            document.getElementById("missedActionsText").textContent = ` (LOST ${missedActionSlots} PP)`;
-        } else {
-            document.getElementById("missedActionsText").textContent = ` (GAINED ${Math.abs(missedActionSlots)} PP?)`;
-
-        }
-    }
-
-
+  if ($("streakCurrent")) $("streakCurrent").textContent = String(state.ppStreak || 0);
+  if ($("streakMin")) $("streakMin").textContent = String(min);
+  if ($("streakAvg")) $("streakAvg").textContent = avg.toFixed(1);
+  if ($("streakMax")) $("streakMax").textContent = String(max);
+  if ($("streaks")) $("streaks").textContent = streaks.join(",");
 }
 
-
-function updateNpcIcons(npcName) {
-    const data = npcData[npcName] || npcData["default"];
-
-    console.log(data)
-
-    document.querySelectorAll(".npcIcon").forEach(el => {
-        el.src = data.icon;
-    });
+// ===============================
+// Histogram
+// ===============================
+function buildHistogram(streaks) {
+  const hist = {};
+  for (const s of streaks) hist[s] = (hist[s] || 0) + 1;
+  return hist;
 }
 
-// load sessions
-function buildSessionList() {
-    let raw = localStorage.getItem(SAVE_KEY);
-    let saves;
+function renderHistogram(streaks) {
+  const container = $("streakHistogram");
+  if (!container) return;
 
-    try {
-        saves = JSON.parse(raw);
-        if (!Array.isArray(saves)) saves = [];
-    } catch {
-        saves = [];
-    }
+  const hist = buildHistogram(streaks);
+  const sorted = Object.keys(hist).map(n => parseInt(n, 10)).sort((a, b) => a - b);
 
-    const list = document.getElementById("sessionList");
-    list.innerHTML = "";
-
-    if (saves.length === 0) {
-        list.innerHTML = "<i>No saved sessions.</i>";
-        return;
-    }
-
-    saves.forEach((s, index) => {
-        const date = new Date(s.timestamp).toLocaleString();
-        const totalPP = s.normalPP + s.fastboiPP + s.camoPP;
-
-        let div = document.createElement("div");
-        div.style.marginBottom = "10px";
-        div.style.padding = "8px";
-        div.style.borderBottom = "1px solid #555";
-
-        div.innerHTML = `
-            <b>Session ${index + 1}</b> <span style="opacity:0.7;">(${date})</span><br>
-            Total PP: ${totalPP}<br>
-            Time: ${(s.elapsed / 1000).toFixed(1)}s<br>
-
-            <button class="loadBtn" data-index="${index}"
-                style="margin-top:5px; margin-right:6px;
-                background:#4CAF50; color:white; padding:4px 8px; border:0; border-radius:4px;">
-                Load
-            </button>
-
-            <button class="deleteBtn" data-index="${index}"
-                style="background:#b33131; color:white; padding:4px 8px; border:0; border-radius:4px;">
-                Delete
-            </button>
-        `;
-
-        list.appendChild(div);
-    });
-
-    // Add event listeners for all load buttons
-    document.querySelectorAll(".loadBtn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const index = Number(btn.dataset.index);
-            loadSessionFromIndex(index);
-            document.getElementById("sessionPopup").style.display = "none";
-        });
-    });
-
-    // Add event listeners for all delete buttons
-    document.querySelectorAll(".deleteBtn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const index = Number(btn.dataset.index);
-            deleteSession(index);
-            buildSessionList(); // refresh list
-        });
-    });
+  let html = "<b>Streak histogram</b><br>";
+  for (const val of sorted) {
+    const count = hist[val];
+    const bar = "█".repeat(count);
+    html += `${val.toString().padStart(3, " ")}: ${bar} (${count})<br>`;
+  }
+  container.innerHTML = html;
 }
 
-function loadSessionFromIndex(i) {
-    let saves = JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
-    if (!saves[i]) return;
+// ===============================
+// INIT
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  loadStateFromLocalStorage();
+  applyStateToUI();
+  wireUIAutosave();
 
-    loadSessionIntoTracker(saves[i]);
-}
+  updateTotalBuffUI();
+  updateSuccessChanceUI();
+  renderHistogram(state.streaks);
 
-function deleteSession(i) {
-    let saves = JSON.parse(localStorage.getItem(SAVE_KEY)) || [];
-    saves.splice(i, 1);
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
-}
-
-// Timer
-function updateTimerDisplay(ms) {
-    let totalSeconds = Math.floor(ms / 1000);
-    let hours = Math.floor(totalSeconds / 3600);
-    let minutes = Math.floor((totalSeconds % 3600) / 60);
-    let seconds = totalSeconds % 60;
-    let milliseconds = Math.round(ms % 1000);
-
-    const formatted =
-        String(hours).padStart(2, '0') + ":" +
-        String(minutes).padStart(2, '0') + ":" +
-        String(seconds).padStart(2, '0') + "." +
-        String(milliseconds).padStart(3, '0');
-
-    document.getElementById("timer").textContent = formatted;
-}
-
-// -------------------------
-// Helpers functions
-// -------------------------
-
-function msUntilNextTick(elapsed) {
-    const tick = 600; // RuneScape tick = 0.6 seconds
-    const remainder = elapsed % tick;
-    return remainder === 0 ? 0 : (tick - remainder);
-}
-
-function buildSnapshot(completedActionSlots) {
-    const ticksPerAction = setting_stickyFingers ? 2 : 3;
-    const actionsPerHour = 3600000 / (ticksPerAction * 600);
-
-    const normalPPPerHour =
-        completedActionSlots > 0
-            ? (normalPP / completedActionSlots) * actionsPerHour
-            : 0;
-
-    const efficiency =
-        completedActionSlots > 0
-            ? Math.min(100, (normalPP / completedActionSlots) * 100)
-            : 100;
-
-    return {
-        timestamp: Date.now(),
-        completedActionSlots,
-        ticksPerAction,
-        tickOffset,
-        normalPP,
-        camoPP,
-        fastboiPP,
-        failedPP,
-
-        currentNPC,
-        normalPPPerHour,
-        efficiency
-    };
-}
-
-function buildSavePreview(s) {
-    const preview = document.getElementById("saveDataPreview");
-
-    preview.innerHTML = `
-        <div style="color:#ffcc00; margin-bottom:8px;">
-            <i>
-                Data will be saved on the <b>next completed pickpocket action</b>.
-            </i>
-        </div>
-
-        <div><b>Normal PP:</b> ${s.normalPP}</div>
-        <div><b>Fastboi PP:</b> ${s.fastboiPP}</div>
-        <div><b>Camo PP:</b> ${s.camoPP}</div>
-        <div><b>Failed PP:</b> ${s.failedPP}</div>
-
-        <br>
-
-        <div><b>Completed actions:</b> ${s.completedActionSlots}</div>
-        <div><b>PP/H:</b> ${s.normalPPPerHour.toFixed(0)}</div>
-        <div><b>Efficiency:</b> ${s.efficiency.toFixed(2)}%</div>
-    `;
-}
-
-// -------------------------
-// Settings
-// -------------------------
-
-document.getElementById("autoStartCheckbox").addEventListener("change", e => {
-    setting_autoStart = e.target.checked;
-    saveSettings();
-});
-
-document.getElementById("stickyFingersCheckbox").addEventListener("change", e => {
-    setting_stickyFingers = e.target.checked;
-    saveSettings();
-    updateDisplay(); // recalc PP/H immediately
-});
-
-function loadSettings() {
-    const raw = localStorage.getItem("ppTrackerSettings");
-    if (raw) {
-        try {
-            const data = JSON.parse(raw);
-            setting_autoStart = !!data.autoStart;
-            setting_stickyFingers = !!data.stickyFingers;
-        } catch (e) {}
-    }
-
-    // Reflect in UI
-    document.getElementById("autoStartCheckbox").checked = setting_autoStart;
-    document.getElementById("stickyFingersCheckbox").checked = setting_stickyFingers;
-}
-
-function saveSettings() {
-    const data = {
-        autoStart: setting_autoStart,
-        stickyFingers: setting_stickyFingers
-    };
-    localStorage.setItem("ppTrackerSettings", JSON.stringify(data));
-}
-
-// -------------------------
-// Save/load system (MULTI SAVE)
-// -------------------------
-
-function getCurrentSessionData(completedActionSlots) {
-    return {
-        timestamp: Date.now(),
-        completedActionSlots,
-        ticksPerAction,
-        tickOffset,
-        normalPP,
-        camoPP,
-        fastboiPP,
-        failedPP,
-        currentNPC
-    };
-}
-
-function saveState(snapshot) {
-    let raw = localStorage.getItem(SAVE_KEY);
-    let saves;
-
-    try {
-        saves = JSON.parse(raw);
-        if (!Array.isArray(saves)) saves = [];
-    } catch {
-        saves = [];
-    }
-
-    saves.push(snapshot);
-
-    localStorage.setItem(SAVE_KEY, JSON.stringify(saves));
-}
-
-// Load all sessions + build UI
-function loadState() {
-    let raw = localStorage.getItem(SAVE_KEY);
-    let saves;
-
-    try {
-        saves = JSON.parse(raw);
-        if (!Array.isArray(saves)) saves = [];
-    } catch {
-        saves = [];
-    }
-
-    const container = document.getElementById("previousSessions");
-    if (!container) return;
-
-    container.innerHTML = "";
-
-    saves.forEach((s, index) => {
-        // intentionally empty now — legacy UI removed
-    });
-}
-
-
-function loadSessionIntoTracker(s) {
-    stopTimer();
-
-    normalPP  = s.normalPP;
-    camoPP    = s.camoPP;
-    fastboiPP = s.fastboiPP;
-    failedPP  = s.failedPP;
-
-    currentNPC = s.currentNPC || "default";
-
-    // ✅ RESTORE TICK CORRECTION
-    tickOffset = s.tickOffset || 0;
-    document.getElementById("tickOffsetInput").value = tickOffset;
-
-    // ✅ RECONSTRUCT TIME FROM ACTION SLOTS
-    const ticksPerAction = s.ticksPerAction ?? (setting_stickyFingers ? 2 : 3);
-    const restoredTicks = s.completedActionSlots * ticksPerAction;
-
-    pausedTime = restoredTicks * 600;
-    startTime = performance.now() - pausedTime;
-
-    updateTimerDisplay(pausedTime);
-    updateDisplay();
-}
-
-function clearSave() {
-    localStorage.removeItem(SAVE_KEY);
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-    loadSettings();
-    loadState();
+  updateTimerDisplay(state.pausedTime || 0);
+  updateDisplay();
 });
